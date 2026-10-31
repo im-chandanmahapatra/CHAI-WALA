@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chaiwala is a cinematic chai counter across three generations: 90s adda, 2000s café and now." />
+    <meta name="theme-color" content="#101113" />
+    <meta property="og:title" content="Chaiwala — chai across generations" />
+    <meta property="og:description" content="One counter. Three generations. Pick your chai memory." />
+    <meta property="og:type" content="website" />
+    <title>Chaiwala — chai across generations</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to menu</a>
+    <div id="root"></div>
+    <script>
+      if (window.location.protocol === 'file:') {
+        document.getElementById('root').innerHTML = '<main style="max-width:42rem;margin:12vh auto;padding:2rem;font-family:system-ui;color:#18201c"><p style="color:#bd3e21;font-weight:700;letter-spacing:.08em">LOCAL PREVIEW</p><h1 style="font-family:Georgia,serif;font-size:3rem;margin:.2rem 0">Serve this app first.</h1><p>Chaiwala is a Vite/React application and cannot run from a <code>file://</code> URL. In the <code>client</code> folder, run <code>npm run dev</code>, then open <a href="http://localhost:5173/">http://localhost:5173/</a>.</p></main>';
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

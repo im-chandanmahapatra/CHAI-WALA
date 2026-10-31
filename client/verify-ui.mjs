@@ -1,0 +1,57 @@
+import { chromium } from '@playwright/test';
+import assert from 'node:assert/strict';
+const browser = await chromium.launch({ channel: 'chrome', headless: true });
+try {
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.goto('http://localhost:5173/');
+    await page.locator('.intro-complete').waitFor({ timeout: 10000 });
+    await page.waitForTimeout(800);
+    assert.ok(await page.locator('#eras').evaluate(el => el.getBoundingClientRect().top < 150), 'Intro advances to generations');
+    assert.equal(await page.locator('.era-card').count(), 3);
+    await page.getByRole('button', { name: /03.*GEN Z/ }).click();
+    await page.locator('#story').waitFor();
+    assert.equal(await page.locator('.chaiwala-app').getAttribute('data-era'), 'now');
+    await page.locator('.menu-era-switch button').first().click();
+    await page.locator('.product-card').first().getByRole('button').click();
+    await page.getByLabel('Kulhad Mug (220ml)').check();
+    await page.getByLabel(/Less Sugar/).check();
+    await page.getByRole('button', { name: 'Increase quantity', exact: true }).click();
+    await page.getByRole('button', { name: 'Add to bag · ₹120', exact: true }).click();
+    assert.match(await page.locator('.cart-line').innerText(), /Less Sugar.*Kulhad|Kulhad.*Less Sugar/s);
+    assert.match(await page.locator('.bill-total').innerText(), /136/);
+    await page.getByRole('button', { name: /Pickup choose karo/ }).click();
+    await page.locator('.slots input').first().waitFor();
+    await page.getByLabel('Naam', { exact: true }).fill('UI Test');
+    await page.getByLabel('Mobile', { exact: true }).fill('9999999999');
+    await page.getByRole('button', { name: /Order place karo/ }).click();
+    await page.locator('.confirmation').waitFor();
+    assert.match(await page.locator('.confirmation').innerText(), /CW-/);
+    const orders = await page.evaluate(() => JSON.parse(localStorage.getItem('cw.db.orders') || '[]'));
+    assert.equal(orders.length, 1);
+    assert.equal(orders[0].totalPaise, 13600);
+    await page.getByRole('button', { name: 'Back to Chaiwala' }).click();
+    await page.reload();
+    await page.locator('.intro-complete').waitFor({ timeout: 10000 });
+    await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur(); window.scrollTo({ top: 0, behavior: 'instant' }); });
+    await page.waitForTimeout(1000);
+    const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
+    assert.equal(horizontalOverflow, false, 'No horizontal overflow');
+    const missing = await page.locator('img').evaluateAll(images => images.filter(img => img.complete && img.naturalWidth === 0).map(img => img.src));
+    assert.deepEqual(missing, []);
+    assert.deepEqual(errors, []);
+    await page.screenshot({ path: 'qa-' + viewport.width + '.png', fullPage: true });
+    console.log('PASS', viewport.width, 'intro, generations, customization, quantity, bag, pickup, checkout, assets, overflow, console');
+    await context.close();
+  }
+  const context = await browser.newContext({ reducedMotion: 'reduce' });
+  const page = await context.newPage();
+  await page.goto('http://localhost:5173/');
+  await page.getByRole('button', { name: 'SCROLL TO YOUR CHAI WORLD' }).click();
+  assert.ok(await page.locator('#eras').evaluate(el => el.getBoundingClientRect().top < 150));
+  console.log('PASS reduced-motion scroll control');
+  await context.close();
+} finally { await browser.close(); }

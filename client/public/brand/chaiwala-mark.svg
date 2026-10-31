@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 68" role="img" aria-labelledby="title">
+  <title>Chaiwala — chai across generations</title>
+  <g fill="none" stroke="#f04e30" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M9 27h37v9c0 13-8 21-18.5 21S9 49 9 36v-9Z"/>
+    <path d="M46 31h7c7 0 7 13 0 13h-7"/>
+    <path d="M20 18c-4-4-3-8 0-12M32 18c4-4 3-8 0-12"/>
+  </g>
+  <text x="72" y="35" fill="#101113" font-family="Arial,sans-serif" font-size="30" font-weight="800" letter-spacing="-2">CHAIWALA</text>
+  <text x="74" y="53" fill="#555851" font-family="Arial,sans-serif" font-size="9" font-weight="700" letter-spacing="2.3">ACROSS GENERATIONS</text>
+</svg>
