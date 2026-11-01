@@ -1,11 +1,11 @@
-import { isSupabaseConfigured, supabase } from './supabase';
+import { getSupabase, isSupabaseConfigured } from './supabase';
 import { Product, PickupSlot } from './database.types';
 import { SEED_PRODUCTS } from './seed-data';
 
 // Boundary between the camelCase UI model and the checked-in SQL schema.
 export async function loadCatalogue(): Promise<Product[]> {
   if (!isSupabaseConfigured) {
-    const { data } = await (supabase as any).from('products').select();
+    const { data } = await ((await getSupabase()) as any).from('products').select();
     return data.map((product: Product) => {
       const seed = SEED_PRODUCTS.find(item => item.id === product.id);
       return seed ? { ...product, imagePath: seed.imagePath, imageAlt: seed.imageAlt,
@@ -16,7 +16,7 @@ export async function loadCatalogue(): Promise<Product[]> {
       } : product;
     });
   }
-  const { data, error } = await (supabase as any).from('products').select('*, option_groups(*, option_choices(*))');
+  const { data, error } = await ((await getSupabase()) as any).from('products').select('*, option_groups(*, option_choices(*))');
   if (error) throw new Error(error.message);
   return (data ?? []).flatMap((row: any) => {
     const seed = SEED_PRODUCTS.find(product => product.slug === row.slug);
@@ -38,7 +38,7 @@ export async function loadCatalogue(): Promise<Product[]> {
 }
 
 export async function loadPickupWindows(): Promise<PickupSlot[]> {
-  const { data, error } = await (supabase as any).from('pickup_slots').select();
+  const { data, error } = await ((await getSupabase()) as any).from('pickup_slots').select();
   if (error) throw new Error(error.message);
   if (!isSupabaseConfigured) return data ?? [];
   return (data ?? []).map((row: any) => ({
@@ -61,7 +61,7 @@ export async function placeOrder(input: {
     p_items: input.items.map(item => ({ productId: item.productId, quantity: item.quantity,
       options: item.optionIds.map(choiceId => ({ choiceId })) })),
   } : input;
-  const { data, error } = await (supabase as any).rpc('create_order', payload);
+  const { data, error } = await ((await getSupabase()) as any).rpc('create_order', payload);
   if (error) throw new Error(error.message);
   if (!data?.trackingToken) throw new Error('Order confirmation is missing. Please check before retrying.');
   return { ...data, displayNumber: data.displayNumber ?? data.orderNumber };

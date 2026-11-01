@@ -1,6 +1,6 @@
 # Chaiwala — chai across generations
 
-A React/Vite academic-project prototype for a premium chai counter. It has a cinematic scroll opener, three generational menu worlds, a responsive order bag and local mock checkout.
+A React/Vite academic-project prototype for a premium chai counter. It has a cinematic era hero, two switchable menu worlds (1900s Adda and 2020s Café), a responsive order bag and local mock checkout.
 
 ## Run locally
 
