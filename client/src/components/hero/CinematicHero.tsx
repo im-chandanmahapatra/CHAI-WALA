@@ -16,7 +16,7 @@ const COPY = {
     sub: 'Slow-simmered chai, poured for long conversations.',
     body: 'Step into the era where friendships brewed slowly, and a simple glass of chai brought a whole street together.',
     facts: ['Assam CTC, hand-ground spice', 'Brewed over a slow flame', 'Kulhad or cutting glass'],
-    genre: 'Gramophone & tanpura',
+    genre: 'Evergreen Bollywood Classics',
   },
   '2020s': {
     chapter: 'Chapter II · The 2020s',

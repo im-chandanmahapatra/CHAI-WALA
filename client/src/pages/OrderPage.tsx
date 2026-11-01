@@ -13,7 +13,7 @@ import { Option, PickupSlot, Product } from '../lib/database.types';
 import { SEED_PRODUCTS } from '../lib/seed-data';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { loadCatalogue, loadPickupWindows, placeOrder } from '../lib/ordering';
-import { radioAudio } from '../lib/radio-audio';
+import { AudioPlayerState, radioAudio } from '../lib/radio-audio';
 
 // Modular Clean Presentation Layer
 import { SiteHeader } from '../components/layout/SiteHeader';
@@ -23,6 +23,8 @@ import { BrandStory } from '../components/story/BrandStory';
 import { EraRadio } from '../components/audio/EraRadio';
 import { OrderRitual } from '../components/order/OrderRitual';
 import { SiteFooter } from '../components/layout/SiteFooter';
+import { DynamicIslandPlayer } from '../components/audio/DynamicIslandPlayer';
+import { TheatreModeOverlay } from '../components/audio/TheatreModeOverlay';
 
 export type EraMode = '1900s' | '2020s';
 
@@ -68,6 +70,7 @@ export const OrderPage: React.FC = () => {
 
   // Audio state
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [audioState, setAudioState] = useState<AudioPlayerState>(() => radioAudio.getState());
 
   // Search & Catalog
   const [search, setSearch] = useState('');
@@ -116,13 +119,22 @@ export const OrderPage: React.FC = () => {
 
     if (isPlayingAudio) {
       radioAudio.play(mode);
+    } else {
+      radioAudio.setMode(mode);
     }
   };
 
   const toggleRadioAudio = () => {
-    const isNowPlaying = radioAudio.toggle(eraMode);
-    setIsPlayingAudio(isNowPlaying);
+    radioAudio.toggle(eraMode);
   };
+
+  // Sync state with radioAudio engine
+  useEffect(() => {
+    return radioAudio.subscribe((state) => {
+      setIsPlayingAudio(state.isPlaying);
+      setAudioState(state);
+    });
+  }, []);
 
   // Toast auto-dismiss
   useEffect(() => {
@@ -745,6 +757,12 @@ export const OrderPage: React.FC = () => {
           </div>
         </aside>
       )}
+
+      {/* SaaS-Grade Dynamic Island Bottom Player with Ambient Aura */}
+      <DynamicIslandPlayer />
+
+      {/* Immersive Theatre Mode Overlay with Synchronized Lyrics */}
+      <TheatreModeOverlay state={audioState} />
     </div>
   );
 };
