@@ -43,6 +43,8 @@ const BEVERAGE_OPTIONS: OptionGroup[] = [
   },
 ];
 
+const CAFE_OPTIONS: OptionGroup[] = BEVERAGE_OPTIONS.map(group => ({ ...group, options: group.options.map(option => ({ ...option, name: option.id === 'opt-size-reg' ? 'Regular cup' : option.id === 'opt-size-large' ? 'Large cup' : option.name })) }));
+
 const SANDWICH_OPTIONS: OptionGroup[] = [
   {
     id: 'grp-cheese',
@@ -196,7 +198,7 @@ export const SEED_PRODUCTS: Product[] = [
     themes: [
       { themeSlug: 'classics', sortOrder: 1, isFeatured: true, copyOverride: 'High-crema chicory blend pulled with foam.' },
     ],
-    optionGroups: BEVERAGE_OPTIONS,
+    optionGroups: CAFE_OPTIONS,
   },
   {
     id: 'prod-08',
@@ -335,7 +337,7 @@ export const SEED_PRODUCTS: Product[] = [
     themes: [
       { themeSlug: 'lab', sortOrder: 2, isFeatured: true, copyOverride: 'Vibrant antioxidant layer with creamy oat milk.' },
     ],
-    optionGroups: BEVERAGE_OPTIONS,
+    optionGroups: CAFE_OPTIONS,
   },
   {
     id: 'prod-16',

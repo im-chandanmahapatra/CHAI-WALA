@@ -8,7 +8,12 @@ export async function loadCatalogue(): Promise<Product[]> {
     const { data } = await (supabase as any).from('products').select();
     return data.map((product: Product) => {
       const seed = SEED_PRODUCTS.find(item => item.id === product.id);
-      return seed ? { ...product, imagePath: seed.imagePath, imageAlt: seed.imageAlt } : product;
+      return seed ? { ...product, imagePath: seed.imagePath, imageAlt: seed.imageAlt,
+        optionGroups: product.optionGroups?.map(group => ({ ...group, options: group.options.map(option => ({ ...option,
+          name: product.categorySlug !== 'chai' && option.name === 'Cutting (120ml)' ? 'Regular cup'
+            : product.categorySlug !== 'chai' && option.name === 'Kulhad Mug (220ml)' ? 'Large cup' : option.name,
+        })) })),
+      } : product;
     });
   }
   const { data, error } = await (supabase as any).from('products').select('*, option_groups(*, option_choices(*))');

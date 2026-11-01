@@ -17,3 +17,5 @@ ReactDOM.createRoot(rootElement).render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+import './v2.css';
