@@ -1258,6 +1258,53 @@ a {
   overflow: hidden;
 }
 
+.radio-visual-deck {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.radio-view-switch {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--on-ink-line);
+  border-radius: var(--radius-full);
+  padding: 4px;
+  gap: 4px;
+  margin-bottom: 18px;
+  backdrop-filter: blur(8px);
+}
+
+.radio-view-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-ink-muted);
+  cursor: pointer;
+  transition: all 0.25s var(--ease);
+}
+
+.radio-view-tab:hover {
+  color: var(--on-ink);
+}
+
+.radio-view-tab.is-active {
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: 0 4px 12px rgba(229, 142, 38, 0.3);
+}
+
 .radio-record {
   position: relative;
   display: grid;
@@ -1272,6 +1319,83 @@ a {
     repeating-radial-gradient(circle, rgba(255, 255, 255, 0.045) 0 1px, transparent 1px 7px),
     radial-gradient(circle, var(--ink-2), #050403 70%);
   box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.8), inset 0 0 0 1px var(--on-ink-line);
+}
+
+.radio-record.is-hidden-view {
+  display: none;
+}
+
+.radio-yt-container {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--on-ink-line);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+  position: relative;
+}
+
+.radio-yt-container iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0 !important;
+  display: block;
+}
+
+.radio-yt-container.is-hidden-dock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0.001;
+  pointer-events: none;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+  box-shadow: none;
+}
+
+.radio-yt-container.is-visible-video {
+  display: block;
+}
+
+.radio-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.radio-header-meta .section-number {
+  margin-bottom: 0;
+}
+
+.radio-yt-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(229, 142, 38, 0.12);
+  border: 1px solid rgba(229, 142, 38, 0.3);
+  text-decoration: none;
+  transition: all 0.25s var(--ease);
+}
+
+.radio-yt-pill:hover {
+  background: rgba(229, 142, 38, 0.22);
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .radio-record::after {

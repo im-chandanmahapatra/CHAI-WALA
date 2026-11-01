@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './styles/premium.css';
+import './styles/player-saas.css';
 
 const rootElement = document.getElementById('root');
 
