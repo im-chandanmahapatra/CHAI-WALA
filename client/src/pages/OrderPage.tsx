@@ -1,130 +1,752 @@
-import React, { lazy, Suspense, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUpRight, Check, ChevronRight, Clock3, Headphones, Minus, Play, Plus, ShoppingBag, Sparkles, Volume2, X } from 'lucide-react';
+import React, { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  ChevronRight,
+  Clock3,
+  Minus,
+  Plus,
+  ShoppingBag,
+  X,
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { Option, PickupSlot, Product } from '../lib/database.types';
 import { SEED_PRODUCTS } from '../lib/seed-data';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { loadCatalogue, loadPickupWindows, placeOrder } from '../lib/ordering';
+import { radioAudio } from '../lib/radio-audio';
 
-const TimeTable = lazy(() => import('../components/three/TimeTable'));
+// Modular Clean Presentation Layer
+import { SiteHeader } from '../components/layout/SiteHeader';
+import { CinematicHero } from '../components/hero/CinematicHero';
+import { EraMenuSection } from '../components/menu/EraMenuSection';
+import { BrandStory } from '../components/story/BrandStory';
+import { EraRadio } from '../components/audio/EraRadio';
+import { OrderRitual } from '../components/order/OrderRitual';
+import { SiteFooter } from '../components/layout/SiteFooter';
 
-type EraKey = 'adda' | 'cafe' | 'now';
-type OrderResult = { displayNumber: string; trackingToken: string; status: string };
+export type EraMode = '1900s' | '2020s';
 
-const money = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-const defaults = (product: Product) => product.optionGroups?.flatMap((group) => group.options.filter((option) => option.isDefault && option.isAvailable)) ?? [];
-const formatSlot = (slot: PickupSlot) => `${new Date(slot.startsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })} – ${new Date(slot.endsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+interface OrderResult {
+  displayNumber: string;
+  trackingToken: string;
+  status: string;
+}
 
-const eras: Record<EraKey, { number: string; label: string; title: string; roman: string; body: string; signal: string; image: string; ids: string[]; youtubeId: string; youtubeUrl: string; }> = {
-  adda: { number: '01', label: '90s ADDA', title: 'Kadak. Seedha. Apna.', roman: 'Chai ke saath woh purani baat.', body: 'Ginger, cardamom, biscuit tin aur woh extra do minute jo koi jaldi mein nahi leta tha.', signal: 'Cassette warmth · Classic radio', image: '/images/campaign/table-adda-v2.jpg', ids: ['prod-01', 'prod-03', 'prod-04', 'prod-02', 'prod-05', 'prod-06'], youtubeId: 'qVYJ-nn8TV8', youtubeUrl: 'https://youtu.be/qVYJ-nn8TV8' },
-  cafe: { number: '02', label: '2000s CAFÉ', title: 'After class, one more cup.', roman: 'Cold coffee bhi, cutting chai bhi.', body: 'College table, café flash aur woh playlist jo ek hi gaana baar-baar chalati thi.', signal: 'Café flash · 2000s playlist', image: '/images/campaign/table-cafe-v2.jpg', ids: ['prod-01', 'prod-07', 'prod-08', 'prod-09', 'prod-13', 'prod-19'], youtubeId: 'cxEv8whJhfI', youtubeUrl: 'https://youtu.be/cxEv8whJhfI' },
-  now: { number: '03', label: 'GEN Z · NOW', title: 'New flavour. Same pause.', roman: 'Matcha, boba, aur chai — sab apni jagah.', body: 'Aaj ka counter zyada visual hai, lekin drink ke beech ka pause ab bhi real hai.', signal: 'Bright signal · New sound', image: '/images/campaign/table-now-v2.jpg', ids: ['prod-15', 'prod-16', 'prod-14', 'prod-08', 'prod-19'], youtubeId: '6IZTssBAXjo', youtubeUrl: 'https://youtu.be/6IZTssBAXjo' },
+// Whole rupees print as ₹45; paise always show two digits (₹7.50, never ₹7.5).
+const money = (paise: number) => {
+  const digits = paise % 100 ? 2 : 0;
+  return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 };
 
-function Logo({ inverted = false }: { inverted?: boolean }) {
-  return <a href="#top" className={`cw-logo ${inverted ? 'inverted' : ''}`} aria-label="Chaiwala home"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M11 8v17c0 10 5.2 15 13 15s13-5 13-15V8" /><path d="M18 8v15c0 4 2.2 6.8 6 6.8s6-2.8 6-6.8V8" /><path d="M24 4c-2 2.1-2 4.2 0 6.3M31 4c-2 2.1-2 4.2 0 6.3" /></svg><span><b>CHAIWALA</b><small>chai across generations</small></span></a>;
-}
+const defaults = (product: Product) =>
+  product.optionGroups?.flatMap((group) => group.options.filter((option) => option.isDefault && option.isAvailable)) ?? [];
+
+// crypto.randomUUID only exists in secure contexts; phones testing over LAN (http://192.168.x.x) lack it.
+const newRequestKey = () =>
+  typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('');
+
+const formatSlot = (slot: PickupSlot) =>
+  `${new Date(slot.startsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })} – ${new Date(slot.endsAt).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
 
 export const OrderPage: React.FC = () => {
   const { items, addItem, updateQuantity, removeItem, clearCart, subtotalPaise, itemCount } = useCart();
-  const [introEra, setIntroEra] = useState<EraKey>('adda');
-  const [notice, setNotice] = useState('');
-  const [allDrinks, setAllDrinks] = useState(false);
+
+  // Era mode: Single source of truth (1900s Adda vs 2020s Café)
+  const [eraMode, setEraMode] = useState<EraMode>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlEra = params.get('era');
+      if (urlEra === '2020s' || urlEra === '1900s') return urlEra;
+      const saved = localStorage.getItem('cw.era.v3');
+      return saved === '2020s' ? '2020s' : '1900s';
+    } catch {
+      return '1900s';
+    }
+  });
+
+  // Audio state
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+
+  // Search & Catalog
   const [search, setSearch] = useState('');
+  const [showFullMenu, setShowFullMenu] = useState(false);
   const [catalogue, setCatalogue] = useState<Product[]>(isSupabaseConfigured ? [] : SEED_PRODUCTS);
   const [catalogueError, setCatalogueError] = useState('');
-  useEffect(() => { loadCatalogue().then(setCatalogue).catch(() => setCatalogueError('Menu load nahi hua. Please refresh to try again.')); }, []);
+  const [toastNotice, setToastNotice] = useState('');
+
+  // Modals
   const [customProduct, setCustomProduct] = useState<Product | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Option[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<OrderResult | null>(null);
+
+  // Pickup slots & Checkout state
+  const [slots, setSlots] = useState<PickupSlot[]>([]);
+  const [slotId, setSlotId] = useState('');
   const [slotLoading, setSlotLoading] = useState(false);
   const [slotError, setSlotError] = useState('');
-  const [introDone, setIntroDone] = useState(() => { try { return !!sessionStorage.getItem('cw.intro.v2'); } catch { return false; } });
-  const [playingEra, setPlayingEra] = useState<EraKey | null>(null);
-  const requestKey = useRef(crypto.randomUUID());
-  const submitting = useRef(false);
-  const chooseEra = (key: EraKey) => { setEra(key); setIntroDone(true); setPlayingEra(null); try { localStorage.setItem('cw.era.v2', key); } catch {} };
-  const openProduct = (product: Product) => { setCustomProduct(product); setSelectedOptions(defaults(product)); setQuantity(1); };
-  const loadSlots = async () => {
-    setSlotLoading(true); setSlotError('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerNote, setCustomerNote] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const requestKey = useRef('');
+  if (!requestKey.current) requestKey.current = newRequestKey();
+
+  // Load Catalogue
+  useEffect(() => {
+    loadCatalogue()
+      .then(setCatalogue)
+      .catch(() => setCatalogueError('Failed to load menu catalogue. Please refresh.'));
+  }, []);
+
+  // Switch Era Mode
+  const switchEra = (mode: EraMode) => {
+    setEraMode(mode);
+    try {
+      localStorage.setItem('cw.era.v3', mode);
+      const url = new URL(window.location.href);
+      url.searchParams.set('era', mode);
+      window.history.replaceState({}, '', url.toString());
+    } catch {}
+
+    if (isPlayingAudio) {
+      radioAudio.play(mode);
+    }
+  };
+
+  const toggleRadioAudio = () => {
+    const isNowPlaying = radioAudio.toggle(eraMode);
+    setIsPlayingAudio(isNowPlaying);
+  };
+
+  // Toast auto-dismiss
+  useEffect(() => {
+    if (!toastNotice) return;
+    const timer = setTimeout(() => setToastNotice(''), 3500);
+    return () => clearTimeout(timer);
+  }, [toastNotice]);
+
+  // Load Pickup Windows
+  // Background refreshes stay silent so the list and submit button don't flicker every 30s.
+  const loadSlots = async (silent = false) => {
+    if (!silent) {
+      setSlotLoading(true);
+      setSlotError('');
+    }
     try {
       const data = await loadPickupWindows();
-      const available = (data ?? []).filter((slot: PickupSlot) => slot.status === 'AVAILABLE' && slot.remaining > 0 && new Date(slot.startsAt).getTime() > Date.now());
-      setSlots(available); setSlotId(current => available.some((slot: PickupSlot) => slot.id === current) ? current : available[0]?.id ?? '');
-    } catch { setSlotError('Pickup windows load nahi hui. Retry karo.'); } finally { setSlotLoading(false); }
+      const available = (data ?? []).filter(
+        (slot: PickupSlot) => slot.status === 'AVAILABLE' && slot.remaining > 0 && new Date(slot.startsAt).getTime() > Date.now()
+      );
+      setSlots(available);
+      setSlotId((curr) => (available.some((s) => s.id === curr) ? curr : available[0]?.id ?? ''));
+      setSlotError('');
+    } catch {
+      setSlotError('Unable to load pickup slots. Please retry.');
+    } finally {
+      if (!silent) setSlotLoading(false);
+    }
   };
-  const [era, setEra] = useState<EraKey>(() => { try { const saved = localStorage.getItem('cw.era.v2'); return saved === 'cafe' || saved === 'now' ? saved : 'adda'; } catch { return 'adda'; } }); const [cartOpen, setCartOpen] = useState(false); const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [slots, setSlots] = useState<PickupSlot[]>([]); const [slotId, setSlotId] = useState(''); const [name, setName] = useState(''); const [phone, setPhone] = useState(''); const [note, setNote] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false); const [confirmation, setConfirmation] = useState<OrderResult | null>(null);
 
-  useEffect(() => { if (checkoutOpen) { void loadSlots(); const timer = window.setInterval(loadSlots, 30000); return () => clearInterval(timer); } }, [checkoutOpen]);
   useEffect(() => {
-    if (introDone || matchMedia('(prefers-reduced-motion: reduce)').matches || location.hash) { setIntroDone(true); return; }
-    const timers = [setTimeout(() => setIntroEra('cafe'), 1400), setTimeout(() => setIntroEra('now'), 2800), setTimeout(() => { setIntroDone(true); try { sessionStorage.setItem('cw.intro.v2', '1'); } catch {} }, 4500)];
-    return () => timers.forEach(clearTimeout);
-  }, [introDone]);
-  useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(''), 3500); return () => clearTimeout(timer); }, [notice]);
+    if (checkoutOpen) {
+      void loadSlots();
+      const interval = window.setInterval(() => void loadSlots(true), 30000);
+      return () => clearInterval(interval);
+    }
+  }, [checkoutOpen]);
+
+  // Body scroll lock & Escape key handler
   useEffect(() => {
     if (!(customProduct || cartOpen || checkoutOpen || confirmation)) return;
-    const previous = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const timer = setTimeout(() => document.querySelector<HTMLElement>('[role="dialog"] button')?.focus(), 0);
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !submitting.current) { setCustomProduct(null); setCartOpen(false); setCheckoutOpen(false); setConfirmation(null); }
-      if (event.key === 'Tab') {
-        const nodes = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"] button:not(:disabled), [role="dialog"] input:not(:disabled), [role="dialog"] a[href]'));
-        const first = nodes[0], last = nodes[nodes.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) {
+        setCustomProduct(null);
+        setCartOpen(false);
+        setCheckoutOpen(false);
+        setConfirmation(null);
       }
     };
     document.addEventListener('keydown', onKey);
-    return () => { clearTimeout(timer); document.body.style.overflow = overflow; document.removeEventListener('keydown', onKey); previous?.focus(); };
-  }, [customProduct, cartOpen, checkoutOpen, confirmation]);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [customProduct, cartOpen, checkoutOpen, confirmation, isSubmitting]);
 
-  useEffect(() => { const params = new URLSearchParams(window.location.search); const table = params.get('table'); const campaign = params.get('campaign'); if ((table && !/^[A-Za-z0-9_-]{1,32}$/.test(table)) || (campaign && !/^[A-Za-z0-9_-]{1,40}$/.test(campaign))) window.history.replaceState({}, '', window.location.pathname); }, []);
+  // Open customizer
+  const openProduct = (prod: Product) => {
+    setCustomProduct(prod);
+    setSelectedOptions(defaults(prod));
+    setQuantity(1);
+  };
 
-  const featured = useMemo(() => eras[era].ids.map((id) => catalogue.find((product) => product.slug === SEED_PRODUCTS.find(seed => seed.id === id)?.slug)).filter(Boolean) as Product[], [era, catalogue]);
-  const pairing = (era === 'adda' ? ['prod-01', 'prod-06'] : era === 'cafe' ? ['prod-07', 'prod-13'] : ['prod-15', 'prod-19']).map(id => catalogue.find(p => p.slug === SEED_PRODUCTS.find(seed => seed.id === id)?.slug)).filter((p): p is Product => !!p && p.isAvailable);
-  const pairingPrice = pairing.reduce((sum, p) => sum + p.basePricePaise + defaults(p).reduce((n, o) => n + o.priceDeltaPaise, 0), 0);
-  const gst = Math.round(subtotalPaise * .05); const packaging = items.length ? 1000 : 0; const total = subtotalPaise + gst + packaging;
-  const submit = async (event: FormEvent) => { event.preventDefault(); if (submitting.current) return; setError(''); if (!items.length) return setError('Pehle bag mein kuch add karo.'); if (!name.trim()) return setError('Pickup ticket ke liye naam likho.'); if (phone.replace(/\D/g, '').length !== 10) return setError('10-digit mobile number likho.'); if (!slotId) return setError('Ek pickup window choose karo.'); submitting.current = true; setBusy(true); try { const result = await placeOrder( { items: items.map((item) => ({ productId:item.productId, quantity:item.quantity, optionIds:item.options.map((option) => option.optionId) })), pickupSlotId:slotId, customer:{ name:name.trim(), phone:phone.replace(/\D/g, ''), note:note.trim() || undefined }, idempotencyKey:requestKey.current }); setConfirmation(result); requestKey.current = crypto.randomUUID(); clearCart(); setCartOpen(false); setCheckoutOpen(false); } catch (caught) { setError(caught instanceof Error ? caught.message : 'Counter order accept nahi kar paaya. Dobara try karo.'); } finally { submitting.current = false; setBusy(false); } };
+  // Filter curated products based on active Era
+  const curatedIds = useMemo(() => {
+    if (eraMode === '1900s') {
+      return ['prod-01', 'prod-03', 'prod-02', 'prod-05', 'prod-04', 'prod-06', 'prod-07'];
+    } else {
+      return ['prod-08', 'prod-15', 'prod-09', 'prod-16', 'prod-14', 'prod-19', 'prod-18', 'prod-17'];
+    }
+  }, [eraMode]);
 
-  return <div id="top" className="chaiwala-app" data-era={era}>
-    <a className="skip-link" href="#eras">Skip cinematic intro</a>
-    <header className="cw-header"><Logo /><nav aria-label="Primary"><a href="#eras">Memories</a><a href="#menu">Menu</a><a href="#sound">Sound</a></nav><button aria-label={`Open bag, ${itemCount} items`} className="bag-button" onClick={() => setCartOpen(true)}><ShoppingBag size={17} /> <span>Bag</span><b>{itemCount}</b></button></header>
+  const query = search.trim().toLowerCase();
 
-    <main id="main-content">
-      <section className="table-hero" aria-labelledby="hero-title">
-        <div className="table-hero-copy"><p className="kicker">CHAIWALA / A TABLE THROUGH TIME</p><h1 id="hero-title">Waqt badla.<br /><i>Baithak wahi.</i></h1><p className="hero-description">The cups change. The conversations stay.<br />Find a little of your time at our table.</p><a className="hero-menu-link" href="#menu">Find your next cup <ArrowUpRight size={19} /></a><div className="hero-footnote"><span>चायवाला</span><p>THREE ERAS. ONE SHARED TABLE.<br />CHAI · COFFEE · SOMETHING NEW</p></div></div>
-        <div className="table-hero-visual"><Suspense fallback={<img className="hero-poster" src="/images/campaign/era-adda.png" alt="Chai and biscuits on a café table" />}><TimeTable opening={!introDone} era={introDone ? era : introEra} /></Suspense><div className="scene-label"><span>{eras[introDone ? era : introEra].number} / 03</span><b>{eras[introDone ? era : introEra].label}</b><span className="intro-progress" data-done={introDone} /></div></div>
-        <a className="table-scroll" href="#eras" onClick={() => setIntroDone(true)}>Aaj kis zamaane mein baithna hai? <ArrowDown size={16} /></a>
-      </section>
+  // A search always covers the whole catalogue, so "matcha" still finds it while in the 1900s menu.
+  const displayedProducts = useMemo(() => {
+    const list =
+      showFullMenu || query
+        ? catalogue
+        : (curatedIds
+            .map((id) => catalogue.find((p) => p.slug === SEED_PRODUCTS.find((s) => s.id === id)?.slug))
+            .filter(Boolean) as Product[]);
 
-      <section id="eras" className="eras-section" aria-labelledby="eras-title"><div className="eras-heading"><p className="kicker">PULL UP A CHAIR</p><h2 id="eras-title">Your time. <i>Your table.</i></h2><p>Pick the mood you feel, whatever your generation. Your bag comes with you.</p></div><div className="era-selector" role="group" aria-label="Choose your generation">{(Object.keys(eras) as EraKey[]).map((key) => { const item = eras[key]; return <button key={key} aria-pressed={era === key} className="era-card" onClick={() => chooseEra(key)}><span className="era-number">{item.number}</span><img src={item.image} loading="lazy" alt="" /><span className="era-shade" /><span className="era-content"><small>{item.label}{era === key ? ' · SELECTED' : ''}</small><strong>{item.title}</strong><em>{item.roman}</em><span className="era-arrow"><ArrowUpRight size={18} /></span></span></button>; })}</div></section>
+    return list.filter(
+      (p) => !p.isArchived && (!query || `${p.name} ${p.description}`.toLowerCase().includes(query))
+    );
+  }, [catalogue, showFullMenu, curatedIds, query]);
 
-      <section id="story" className="selected-era" aria-live="polite"><div className="era-poster"><img src={eras[era].image} alt="" /><div className="poster-badge"><span>{eras[era].number}</span><span>CHAIWALA<br />MEMORY CLUB</span></div></div><div className="era-story"><p className="kicker">{eras[era].label}</p><h2>{eras[era].title}</h2><p className="era-roman">{eras[era].roman}</p><p className="era-body">{eras[era].body}</p><div className="signal"><Sparkles size={16} /><span>{eras[era].signal}</span></div><a href="#menu" className="underlink">Is world ka menu dekho <ChevronRight size={17} /></a></div></section>
+  // Fade sections up as they enter the viewport; content stays visible without JS or with reduced motion.
+  useEffect(() => {
+    const pending = document.querySelectorAll<HTMLElement>('[data-reveal]:not(.is-visible)');
+    if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      pending.forEach((el) => el.classList.add('is-visible'));
+      return;
+    }
+    document.documentElement.classList.add('reveal-ready');
+    const observer = new IntersectionObserver(
+      (entries) =>
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }),
+      { rootMargin: '0px 0px -6% 0px', threshold: 0.06 }
+    );
+    pending.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [eraMode, displayedProducts]);
 
-      <section id="menu" className="menu-world" aria-labelledby="menu-title"><div className="menu-top"><div><p className="kicker">CURATED FOR {eras[era].label}</p><h2 id="menu-title">The <i>good stuff.</i></h2></div><p>Tumhari generation ke favourites. Kisi aur mood mein ho? Yahin se apna menu switch karo.</p></div><div className="menu-era-switch" role="group" aria-label="Menu generation">{(Object.keys(eras) as EraKey[]).map(key => <button key={key} aria-pressed={era === key} onClick={() => chooseEra(key)}>{eras[key].label}</button>)}</div>{catalogueError && <p role="alert">{catalogueError}</p>}{pairing.length === 2 && <div className="house-pairing"><div><p className="kicker">BETTER TOGETHER / HOUSE PAIRING</p><h3>{pairing.map(p => p.name).join(' + ')}</h3><p>{pairing.map(p => `${p.name} ${money(p.basePricePaise + defaults(p).reduce((n, o) => n + o.priceDeltaPaise, 0))}`).join(' · ')}<br />Default options included. Customize separately below.</p></div><button onClick={() => { pairing.forEach(p => addItem(p, defaults(p), 1)); setNotice('Your house pairing is in the bag'); }}>Add both · {money(pairingPrice)} <Plus size={16} /></button></div>}<div className="catalogue-tools"><label>Find your cup<input type="search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search chai, coffee, matcha…" /></label><button aria-pressed={allDrinks} onClick={() => setAllDrinks(v => !v)}>{allDrinks ? 'Show era favourites' : 'Explore the full menu'}</button></div><div className="product-editorial">{(allDrinks ? catalogue : featured).filter(p => !p.isArchived && `${p.name} ${p.description}`.toLowerCase().includes(search.toLowerCase())).map((product, index) => <article className="product-card" key={product.id}><span className="product-index">0{index + 1}</span><img src={product.imagePath} loading="lazy" alt={product.imageAlt} /><div className="product-info"><div><h3>{product.name}</h3><p>{product.description}</p></div><div className="product-bottom"><strong>{money(product.basePricePaise)}</strong><button disabled={!product.isAvailable} onClick={() => openProduct(product)}>{product.isAvailable ? <><Plus size={17} /> Customize & add</> : 'Sold out'}</button></div></div></article>)}</div><p className="menu-note" role="status">{!(allDrinks ? catalogue : featured).some(p => !p.isArchived && `${p.name} ${p.description}`.toLowerCase().includes(search.toLowerCase())) && "No drinks match. Try another search or explore the full menu. "}Apni pasand ka size, sweetness aur quantity choose karo. Generation change karne par bag safe rahega.</p></section>
+  // House pairing per era
+  const pairingIds = eraMode === '1900s' ? ['prod-03', 'prod-05'] : ['prod-08', 'prod-19'];
+  const pairingProducts = pairingIds
+    .map((id) => catalogue.find((p) => p.slug === SEED_PRODUCTS.find((s) => s.id === id)?.slug))
+    .filter((p): p is Product => !!p && p.isAvailable);
 
-      <section id="sound" className="sound-preview" aria-labelledby="sound-title"><div className="sound-copy"><p className="kicker">CHAIWALA RADIO</p><h2 id="sound-title">Sound bhi <i>memory</i> hai.</h2><p><b>{eras[era].label}</b> ke liye chosen soundtrack. Play dabao aur apne chai world mein raho.</p><div className="sound-actions"><button className="sound-button" onClick={() => setPlayingEra(current => current === era ? null : era)}>{playingEra === era ? <X size={18} /> : <Play size={18} />}{playingEra === era ? 'Close soundtrack' : 'Play soundtrack'}</button><a href={eras[era].youtubeUrl} target="_blank" rel="noreferrer">YouTube par kholo <ArrowUpRight size={15} /></a></div></div><div className="sound-player"><div className="sound-player-label"><Headphones size={16} /><span>{eras[era].label} · CHAIWALA RADIO</span></div>{playingEra === era ? <iframe key={eras[era].youtubeId} title={`${eras[era].label} soundtrack`} src={`https://www.youtube-nocookie.com/embed/${eras[era].youtubeId}?autoplay=1&playsinline=1&rel=0`} allow="autoplay; encrypted-media; picture-in-picture" allowFullScreen /> : <button className="sound-cover" onClick={() => setPlayingEra(era)}><img src={eras[era].image} alt="" /><span><Play size={24} /> Play {eras[era].label}</span></button>}</div></section>
+  const pairingTotalPrice = pairingProducts.reduce(
+    (sum, p) => sum + p.basePricePaise + defaults(p).reduce((n, o) => n + o.priceDeltaPaise, 0),
+    0
+  );
 
-      <section className="ritual-section"><p className="kicker">THE ORDER RITUAL</p><div className="ritual-grid"><div><span>01</span><h3>Memory choose karo.</h3><p>90s, 2000s ya Now — it only changes the experience, not the freedom to order.</p></div><div><span>02</span><h3>Apna cup add karo.</h3><p>Bag always stays with you. Quantity aur total clearly visible rahega.</p></div><div><span>03</span><h3>Warm pickup.</h3><p>Available slot choose karo. Counter par pay karke collect karo.</p></div></div></section>
-    </main>
+  // Billing math in integer paise
+  const gstPaise = Math.round(subtotalPaise * 0.05);
+  const packagingPaise = items.length ? 1000 : 0;
+  const grandTotalPaise = subtotalPaise + gstPaise + packagingPaise;
 
-    <footer className="after-footer"><div><Logo inverted /><p className="footer-line">A little pause. A longer conversation.</p></div><div className="footer-worlds"><a href="#story" onClick={() => chooseEra('adda')}>01 · 90s Adda</a><a href="#story" onClick={() => chooseEra('cafe')}>02 · 2000s Café</a><a href="#story" onClick={() => chooseEra('now')}>03 · Gen Z</a></div><div className="footer-meta"><span>CHAIWALA MEMORY CLUB</span><span>One counter. Everyone belongs.</span><span>© 2026</span></div></footer>
+  // Checkout submission
+  const submitOrder = async (e: FormEvent) => {
+    e.preventDefault();
+    if (isSubmitting) return;
+    setSubmitError('');
 
-    <div className="bag-notice" role="status">{notice && <><Check size={17} />{notice}<button onClick={() => setCartOpen(true)}>View bag</button></>}</div>
-    {itemCount > 0 && <button className="mobile-bag" onClick={() => setCartOpen(true)}><ShoppingBag size={19} /> Bag kholo <b>{money(total)}</b><span>{itemCount}</span></button>}
-    {customProduct && <aside className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="custom-title"><div className="cart-sheet custom-sheet"><button className="close-sheet" aria-label="Close customization" onClick={() => setCustomProduct(null)}><X /></button><img className="custom-photo" src={customProduct.imagePath} alt={customProduct.imageAlt} /><p className="kicker">MAKE IT YOURS</p><h2 id="custom-title">{customProduct.name}</h2><p>{customProduct.description}</p>{customProduct.optionGroups?.map(group => <fieldset key={group.id}><legend>{group.name} <small>({group.minSelect ? 'Required' : 'Optional'} · up to {group.maxSelect})</small></legend><div className="option-list">{group.options.map(option => <label key={option.id} className={selectedOptions.some(o => o.id === option.id) ? 'selected' : ''}><input type={group.maxSelect === 1 && group.minSelect > 0 ? 'radio' : 'checkbox'} name={group.id} disabled={!option.isAvailable} checked={selectedOptions.some(o => o.id === option.id)} onChange={() => setSelectedOptions(current => {
-  const chosen = current.some(o => o.id === option.id);
-  if (chosen && group.minSelect === 0) return current.filter(o => o.id !== option.id);
-  if (group.maxSelect === 1) return [...current.filter(o => !group.options.some(g => g.id === o.id)), option];
-  if (chosen) return current.filter(o => o.id !== option.id);
-  return current.filter(o => group.options.some(g => g.id === o.id)).length < group.maxSelect ? [...current, option] : current;
-})} /><span>{option.name}</span><b>{option.priceDeltaPaise ? '+' + money(option.priceDeltaPaise) : 'Included'}</b></label>)}</div></fieldset>)}<div className="custom-quantity"><span>Quantity</span><div className="quantity"><button disabled={quantity <= 1} aria-label="Decrease quantity" onClick={() => setQuantity(q => q - 1)}><Minus size={16} /></button><span>{quantity}</span><button disabled={quantity >= 20} aria-label="Increase quantity" onClick={() => setQuantity(q => q + 1)}><Plus size={16} /></button></div></div><button className="primary-action wide" disabled={customProduct.optionGroups?.some(g => selectedOptions.filter(o => g.options.some(opt => opt.id === o.id)).length < g.minSelect)} onClick={() => { addItem(customProduct, selectedOptions, quantity); setCustomProduct(null); setNotice(`${quantity} × ${customProduct.name} added to your bag`); }}>Add to bag · {money((customProduct.basePricePaise + selectedOptions.reduce((sum, option) => sum + option.priceDeltaPaise, 0)) * quantity)}</button></div></aside>}
-    {cartOpen && <aside className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="bag-title"><div className="cart-sheet"><button className="close-sheet" aria-label="Close bag" onClick={() => setCartOpen(false)}><X /></button><p className="kicker">YOUR CHAIWALA BAG</p><h2 id="bag-title">Ready when<br /><i>you are.</i></h2>{items.length ? <><div className="cart-lines">{items.map((item) => <div className="cart-line" key={item.id}><div><b>{item.productName}</b><small>{item.options.map((option) => option.optionName).join(' · ')}</small><strong>{money(item.lineTotalPaise)}</strong></div><div className="quantity"><button aria-label={`Remove one ${item.productName}`} onClick={() => updateQuantity(item.id,item.quantity - 1)}><Minus size={14} /></button><span>{item.quantity}</span><button aria-label={`Add one ${item.productName}`} onClick={() => updateQuantity(item.id,item.quantity + 1)}><Plus size={14} /></button></div><button className="remove-line" onClick={() => removeItem(item.id)}>Remove</button></div>)}</div><div className="bill"><p><span>Subtotal</span><span>{money(subtotalPaise)}</span></p><p><span>GST (5%)</span><span>{money(gst)}</span></p><p><span>Packaging</span><span>{money(packaging)}</span></p><p className="bill-total"><span>Total at counter</span><b>{money(total)}</b></p></div><button className="primary-action wide" onClick={() => {setCartOpen(false);setError('');setCheckoutOpen(true);}}>Pickup choose karo <ChevronRight size={18} /></button></> : <div className="empty-bag"><p>Bag abhi khaali hai. Apna pehla cup choose karo.</p><button className="primary-action wide" onClick={() => { setCartOpen(false); document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' }); }}>Explore menu</button></div>}</div></aside>}
-    {checkoutOpen && <aside className="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="checkout-title"><form className="checkout-sheet" onSubmit={submit}><button type="button" className="close-sheet" aria-label="Close checkout" onClick={() => setCheckoutOpen(false)}><X /></button><p className="kicker">PICKUP CHECKOUT</p><h2 id="checkout-title">Almost<br /><i>there.</i></h2><fieldset><legend><Clock3 size={17} /> Pickup window</legend>{slotLoading && <p role="status">Checking pickup windows…</p>}{slotError && <p role="alert">{slotError} <button type="button" onClick={loadSlots}>Retry</button></p>}{!slotLoading && !slotError && !slots.length && <p role="status">Abhi pickup windows available nahi hain. <button type="button" onClick={loadSlots}>Refresh windows</button></p>}<div className="slots">{slots.map((slot) => <label key={slot.id} className={slotId === slot.id ? 'selected' : ''}><input type="radio" name="slot" checked={slotId === slot.id} onChange={() => setSlotId(slot.id)} /><span>{formatSlot(slot)}</span><small>{slot.remaining} of {slot.capacity} slots left</small></label>)}</div></fieldset><label className="field">Naam<input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Ticket par kya naam hoga?" /></label><label className="field">Mobile<input required inputMode="numeric" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="10-digit mobile number" /></label><label className="field">Pickup note <small>(optional)</small><input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Kuch special note?" /></label><p className="checkout-total">Total · <strong>{money(total)}</strong></p><button type="button" className="back-to-bag" onClick={() => { setCheckoutOpen(false); setCartOpen(true); }}>← Edit bag</button><p className="pay-note">{isSupabaseConfigured ? "Pay cash ya UPI at the counter." : "Demo order · No payment is collected. Pickup confirmation is simulated on this device."}</p>{error && <p className="form-error" role="alert">{error}</p>}<button className="primary-action wide" disabled={busy || slotLoading || !slotId || !!slotError}>{busy ? 'Order bhej rahe hain…' : `Order place karo · ${money(total)}`}</button></form></aside>}
-    {confirmation && <aside className="sheet-backdrop confirmation-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmation-title"><div className="confirmation"><div className="ticket-check"><Check /></div><p className="kicker">{isSupabaseConfigured ? "ORDER SENT" : "DEMO ORDER SAVED"}</p><h2 id="confirmation-title">{isSupabaseConfigured ? <>Chai is<br /><i>on the way.</i></> : <>Your table.<br /><i>Your ticket.</i></>}</h2><p>Ticket <b>{confirmation.displayNumber}</b>. {isSupabaseConfigured ? "Café confirmation ka wait kar raha hai. Pickup par pay karna." : "Your demo order is saved on this device. No real café order or payment was sent."}</p><p className="tracking">Tracking reference: {confirmation.trackingToken}</p><button className="primary-action wide" onClick={() => setConfirmation(null)}>Back to Chaiwala</button></div></aside>}
-  </div>;
+    if (!items.length) return setSubmitError('Your bag is currently empty.');
+    if (!customerName.trim()) return setSubmitError('Please enter the name for your pickup ticket.');
+    if (customerPhone.replace(/\D/g, '').length !== 10) return setSubmitError('Please enter a valid 10-digit mobile number.');
+    if (!slotId) return setSubmitError('Please choose an available pickup window.');
+
+    setIsSubmitting(true);
+    try {
+      const res = await placeOrder({
+        items: items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          optionIds: item.options.map((opt) => opt.optionId),
+        })),
+        pickupSlotId: slotId,
+        customer: {
+          name: customerName.trim(),
+          phone: customerPhone.replace(/\D/g, ''),
+          note: customerNote.trim() || undefined,
+        },
+        idempotencyKey: requestKey.current,
+      });
+
+      setConfirmation(res);
+      requestKey.current = newRequestKey();
+      clearCart();
+      setCartOpen(false);
+      setCheckoutOpen(false);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Unable to confirm order with counter. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div id="top" className="chaiwala-app chaiwala-redesign" data-era-mode={eraMode}>
+      {/* Header & Navigation */}
+      <SiteHeader
+        eraMode={eraMode}
+        itemCount={itemCount}
+        onOpenCart={() => setCartOpen(true)}
+        search={search}
+        onSearchChange={setSearch}
+      />
+
+      <main id="main-content">
+        {/* SECTION A: Cinematic Hero (Reference 1) */}
+        <CinematicHero
+          eraMode={eraMode}
+          onSwitchEra={switchEra}
+          isPlayingAudio={isPlayingAudio}
+          onToggleAudio={toggleRadioAudio}
+        />
+
+        {/* Lower Page Wrapper (Reference 2: Light Aged Parchment / Soft Ivory) */}
+        <div className="redesign-lower-page">
+          {/* SECTION B, C, D: Curated Menu, House Pairing & Product Cards */}
+          <EraMenuSection
+            eraMode={eraMode}
+            displayedProducts={displayedProducts}
+            pairingProducts={pairingProducts}
+            pairingTotalPrice={pairingTotalPrice}
+            onAddPairing={() => {
+              pairingProducts.forEach((p) => addItem(p, defaults(p), 1));
+              setToastNotice('House pairing added to your bag');
+            }}
+            onOpenCustomizer={openProduct}
+            search={search}
+            onSearchChange={setSearch}
+            showFullMenu={showFullMenu}
+            onToggleFullMenu={() => setShowFullMenu((prev) => !prev)}
+            totalCatalogueCount={catalogue.length}
+            catalogueError={catalogueError}
+          />
+
+          {/* SECTION E: Brand Philosophy */}
+          <BrandStory eraMode={eraMode} />
+
+          {/* SECTION F: Chaiwala Radio */}
+          <EraRadio
+            eraMode={eraMode}
+            isPlayingAudio={isPlayingAudio}
+            onToggleAudio={toggleRadioAudio}
+          />
+
+          {/* SECTION G: The Order Ritual */}
+          <OrderRitual />
+        </div>
+      </main>
+
+      {/* SECTION H: Contrasting Dark Footer */}
+      <SiteFooter onSwitchEra={switchEra} />
+
+      {/* Toast Notice */}
+      {toastNotice && (
+        <div className="bag-notice" role="status">
+          <Check size={16} />
+          <span>{toastNotice}</span>
+          <button type="button" onClick={() => setCartOpen(true)}>
+            View bag
+          </button>
+        </div>
+      )}
+
+      {/* Floating Mobile Bag Button */}
+      {itemCount > 0 && (
+        <button type="button" className="mobile-bag" onClick={() => setCartOpen(true)}>
+          <ShoppingBag size={18} />
+          <span>View bag</span>
+          <span className="mobile-bag-count">{itemCount}</span>
+          <b>{money(grandTotalPaise)}</b>
+        </button>
+      )}
+
+      {/* Product Customization Modal */}
+      {customProduct && (
+        <aside
+          className="sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customizer-dialog-title"
+          onClick={(e) => e.target === e.currentTarget && setCustomProduct(null)}
+        >
+          <div className="cart-sheet custom-sheet">
+            <button
+              type="button"
+              className="close-sheet"
+              aria-label="Close product customizer"
+              onClick={() => setCustomProduct(null)}
+            >
+              <X size={20} />
+            </button>
+
+            <img className="custom-photo" src={customProduct.imagePath} alt={customProduct.imageAlt} />
+            <p className="kicker">Make it yours</p>
+            <h2 id="customizer-dialog-title">{customProduct.name}</h2>
+            <p className="sheet-lede">{customProduct.description}</p>
+
+            {customProduct.optionGroups?.map((group) => (
+              <fieldset key={group.id}>
+                <legend>
+                  {group.name} <small>({group.minSelect ? 'Required' : 'Optional'})</small>
+                </legend>
+                <div className="option-list">
+                  {group.options.map((option) => {
+                    const isSelected = selectedOptions.some((o) => o.id === option.id);
+                    return (
+                      <label key={option.id} className={isSelected ? 'selected' : ''}>
+                        <input
+                          type={group.maxSelect === 1 && group.minSelect > 0 ? 'radio' : 'checkbox'}
+                          name={group.id}
+                          disabled={!option.isAvailable}
+                          checked={isSelected}
+                          onChange={() => {
+                            setSelectedOptions((current) => {
+                              const alreadyChosen = current.some((o) => o.id === option.id);
+                              if (alreadyChosen && group.minSelect === 0) {
+                                return current.filter((o) => o.id !== option.id);
+                              }
+                              if (group.maxSelect === 1) {
+                                return [...current.filter((o) => !group.options.some((g) => g.id === o.id)), option];
+                              }
+                              if (alreadyChosen) {
+                                return current.filter((o) => o.id !== option.id);
+                              }
+                              const existingGroupCount = current.filter((o) => group.options.some((g) => g.id === o.id)).length;
+                              return existingGroupCount < group.maxSelect ? [...current, option] : current;
+                            });
+                          }}
+                        />
+                        <span>{option.name}</span>
+                        <b>{option.priceDeltaPaise ? `+${money(option.priceDeltaPaise)}` : 'Included'}</b>
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            ))}
+
+            <div className="custom-quantity">
+              <span>Quantity</span>
+              <div className="quantity">
+                <button
+                  type="button"
+                  disabled={quantity <= 1}
+                  aria-label="Decrease quantity"
+                  onClick={() => setQuantity((q) => q - 1)}
+                >
+                  <Minus size={15} />
+                </button>
+                <span>{quantity}</span>
+                <button
+                  type="button"
+                  disabled={quantity >= 20}
+                  aria-label="Increase quantity"
+                  onClick={() => setQuantity((q) => q + 1)}
+                >
+                  <Plus size={15} />
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="primary-action wide"
+              disabled={customProduct.optionGroups?.some(
+                (g) => selectedOptions.filter((o) => g.options.some((opt) => opt.id === o.id)).length < g.minSelect
+              )}
+              onClick={() => {
+                addItem(customProduct, selectedOptions, quantity);
+                setCustomProduct(null);
+                setToastNotice(`${quantity} × ${customProduct.name} added to your bag`);
+              }}
+            >
+              Add to bag ·{' '}
+              {money(
+                (customProduct.basePricePaise +
+                  selectedOptions.reduce((sum, opt) => sum + opt.priceDeltaPaise, 0)) *
+                  quantity
+              )}
+            </button>
+          </div>
+        </aside>
+      )}
+
+      {/* Cart Drawer Sheet */}
+      {cartOpen && (
+        <aside
+          className="sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cart-dialog-title"
+          onClick={(e) => e.target === e.currentTarget && setCartOpen(false)}
+        >
+          <div className="cart-sheet">
+            <button
+              type="button"
+              className="close-sheet"
+              aria-label="Close bag drawer"
+              onClick={() => setCartOpen(false)}
+            >
+              <X size={20} />
+            </button>
+
+            <p className="kicker">Your bag</p>
+            <h2 id="cart-dialog-title">
+              Ready when <br />
+              <i>you are.</i>
+            </h2>
+
+            {items.length ? (
+              <>
+                <div className="cart-lines">
+                  {items.map((item) => (
+                    <div className="cart-line" key={item.id}>
+                      <img className="cart-line-thumb" src={item.imagePath} alt="" />
+                      <div className="cart-line-info">
+                        <b>{item.productName}</b>
+                        <small>{item.options.map((opt) => opt.optionName).join(' · ')}</small>
+                        <strong>{money(item.lineTotalPaise)}</strong>
+                      </div>
+                      <div className="quantity">
+                        <button
+                          type="button"
+                          aria-label={`Decrease ${item.productName}`}
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        >
+                          <Minus size={13} />
+                        </button>
+                        <span>{item.quantity}</span>
+                        <button
+                          type="button"
+                          aria-label={`Increase ${item.productName}`}
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
+                      <button type="button" className="remove-line" onClick={() => removeItem(item.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bill">
+                  <p>
+                    <span>Subtotal</span>
+                    <span>{money(subtotalPaise)}</span>
+                  </p>
+                  <p>
+                    <span>GST (5%)</span>
+                    <span>{money(gstPaise)}</span>
+                  </p>
+                  <p>
+                    <span>Packaging fee</span>
+                    <span>{money(packagingPaise)}</span>
+                  </p>
+                  <p className="bill-total">
+                    <span>Total at counter</span>
+                    <b>{money(grandTotalPaise)}</b>
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  className="primary-action wide"
+                  onClick={() => {
+                    setCartOpen(false);
+                    setSubmitError('');
+                    setCheckoutOpen(true);
+                  }}
+                >
+                  Choose pickup slot <ChevronRight size={18} />
+                </button>
+              </>
+            ) : (
+              <div className="empty-bag">
+                <p>Your bag is currently empty. Add your favorite cup from the menu.</p>
+                <button
+                  type="button"
+                  className="primary-action wide"
+                  onClick={() => {
+                    setCartOpen(false);
+                    document.getElementById('menu')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  Explore menu
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+      )}
+
+      {/* Pickup Checkout Sheet */}
+      {checkoutOpen && (
+        <aside
+          className="sheet-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="checkout-dialog-title"
+          onClick={(e) => e.target === e.currentTarget && !isSubmitting && setCheckoutOpen(false)}
+        >
+          <form className="checkout-sheet" onSubmit={submitOrder}>
+            <button
+              type="button"
+              className="close-sheet"
+              aria-label="Close checkout"
+              onClick={() => setCheckoutOpen(false)}
+            >
+              <X size={20} />
+            </button>
+
+            <p className="kicker">Counter pickup</p>
+            <h2 id="checkout-dialog-title">
+              Almost <br />
+              <i>there.</i>
+            </h2>
+
+            <fieldset>
+              <legend>
+                <Clock3 size={16} /> Choose pickup window
+              </legend>
+              {slotLoading && <p role="status">Checking available windows…</p>}
+              {slotError && (
+                <p role="alert" style={{ color: '#ef4444' }}>
+                  {slotError}{' '}
+                  <button type="button" onClick={() => void loadSlots()} style={{ textDecoration: 'underline' }}>
+                    Retry
+                  </button>
+                </p>
+              )}
+              {!slotLoading && !slotError && !slots.length && (
+                <p role="status">
+                  No pickup windows available right now.{' '}
+                  <button type="button" onClick={() => void loadSlots()} style={{ textDecoration: 'underline' }}>
+                    Refresh
+                  </button>
+                </p>
+              )}
+              <div className="slots">
+                {slots.map((slot) => (
+                  <label key={slot.id} className={slotId === slot.id ? 'selected' : ''}>
+                    <input
+                      type="radio"
+                      name="slot"
+                      checked={slotId === slot.id}
+                      onChange={() => setSlotId(slot.id)}
+                    />
+                    <span>{formatSlot(slot)}</span>
+                    <small>
+                      {slot.remaining} of {slot.capacity} slots left
+                    </small>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            <label className="field">
+              Your Name
+              <input
+                required
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Name on the order ticket"
+              />
+            </label>
+
+            <label className="field">
+              Mobile Number
+              <input
+                required
+                inputMode="numeric"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="10-digit mobile number"
+              />
+            </label>
+
+            <label className="field">
+              Special instructions <small>(optional)</small>
+              <input
+                value={customerNote}
+                onChange={(e) => setCustomerNote(e.target.value)}
+                placeholder="Extra hot, extra ginger, less ice, etc."
+              />
+            </label>
+
+            <p className="checkout-total">
+              Total · <strong>{money(grandTotalPaise)}</strong>
+            </p>
+
+            <button
+              type="button"
+              className="back-to-bag"
+              onClick={() => {
+                setCheckoutOpen(false);
+                setCartOpen(true);
+              }}
+            >
+              ← Edit bag
+            </button>
+
+            <p className="pay-note">
+              {isSupabaseConfigured
+                ? 'Pay cash or UPI directly at the café counter upon collection.'
+                : 'Demo mode · Order is simulated on this device. Pay cash or UPI at the counter.'}
+            </p>
+
+            {submitError && (
+              <p className="form-error" role="alert">
+                {submitError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              className="primary-action wide"
+              disabled={isSubmitting || slotLoading || !slotId || !!slotError}
+            >
+              {isSubmitting ? 'Placing your order…' : `Confirm Order · ${money(grandTotalPaise)}`}
+            </button>
+          </form>
+        </aside>
+      )}
+
+      {/* Confirmation Ticket Dialog */}
+      {confirmation && (
+        <aside className="sheet-backdrop confirmation-backdrop" role="dialog" aria-modal="true" aria-labelledby="confirmation-dialog-title">
+          <div className="confirmation">
+            <div className="ticket-check">
+              <Check size={28} />
+            </div>
+            <p className="kicker">{isSupabaseConfigured ? 'Order sent to the counter' : 'Demo order confirmed'}</p>
+            <h2 id="confirmation-dialog-title">
+              Your table. <br />
+              <i>Your ticket.</i>
+            </h2>
+            <p>
+              Order Ticket <b>{confirmation.displayNumber}</b> is ready! Show this ticket number at the counter to collect your warm brew.
+            </p>
+            <p className="tracking">Tracking reference: {confirmation.trackingToken}</p>
+            <button type="button" className="primary-action wide" onClick={() => setConfirmation(null)}>
+              Back to Chaiwala
+            </button>
+          </div>
+        </aside>
+      )}
+    </div>
+  );
 };
+
+export default OrderPage;

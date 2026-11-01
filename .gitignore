@@ -27,3 +27,6 @@ npm-debug.log*
 # Vite
 *.local
 
+
+# Unused design/QA images kept locally, not shipped
+design-archive/

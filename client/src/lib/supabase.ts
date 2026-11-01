@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { Product, Order, PickupSlot, OrderStatus } from './database.types';
 import { SEED_PRODUCTS, generateDemoPickupSlots } from './seed-data';
 
@@ -13,11 +13,6 @@ const supabaseAnonKey =
     : (globalThis as any).process?.env?.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
-
-let realClient: SupabaseClient | null = null;
-if (isSupabaseConfigured) {
-  realClient = createClient(supabaseUrl, supabaseAnonKey);
-}
 
 const storageHelper = {
   getItem: (key: string): string | null => {
@@ -50,18 +45,22 @@ class MockSupabaseBackend {
   }
 
   private init() {
-    // Load products
-    const savedProducts = storageHelper.getItem('cw.db.products');
-    if (savedProducts) {
-      try {
-        this.products = JSON.parse(savedProducts);
-      } catch {
-        this.products = [...SEED_PRODUCTS];
-      }
-    } else {
-      this.products = [...SEED_PRODUCTS];
-      storageHelper.setItem('cw.db.products', JSON.stringify(this.products));
-    }
+    // Always start from the current seed so new products, copy and options ship to returning
+    // browsers; only the admin-editable fields (availability, price) are restored from storage.
+    let saved: Product[] = [];
+    try {
+      const parsed = JSON.parse(storageHelper.getItem('cw.db.products') ?? '[]');
+      if (Array.isArray(parsed)) saved = parsed;
+    } catch {}
+    this.products = SEED_PRODUCTS.map((seed) => {
+      const prev = saved.find((p) => p?.id === seed.id);
+      return {
+        ...seed,
+        isAvailable: typeof prev?.isAvailable === 'boolean' ? prev.isAvailable : seed.isAvailable,
+        basePricePaise: Number.isInteger(prev?.basePricePaise) ? prev!.basePricePaise : seed.basePricePaise,
+      };
+    });
+    storageHelper.setItem('cw.db.products', JSON.stringify(this.products));
 
     // Load orders
     const savedOrders = storageHelper.getItem('cw.db.orders');
@@ -384,8 +383,8 @@ class MockSupabaseBackend {
 
 export const mockBackend = new MockSupabaseBackend();
 
-// Hybrid client that seamlessly delegates to Supabase Cloud or Mock Backend
-export const supabase = realClient || {
+// Local demo client mimicking the Supabase API surface the app uses.
+export const supabase = {
   from(table: string) {
     if (table === 'products') {
       return {
@@ -466,4 +465,12 @@ export const supabase = realClient || {
       return { data: { subscription: { unsubscribe: () => {} } } };
     },
   },
+};
+
+// The Supabase SDK is only downloaded when real credentials are configured, keeping it out of the demo bundle.
+let realClient: Promise<SupabaseClient> | null = null;
+export const getSupabase = (): Promise<SupabaseClient | typeof supabase> => {
+  if (!isSupabaseConfigured) return Promise.resolve(supabase);
+  realClient ??= import('@supabase/supabase-js').then(({ createClient }) => createClient(supabaseUrl, supabaseAnonKey));
+  return realClient;
 };
