@@ -21,6 +21,7 @@ import { CinematicHero } from '../components/hero/CinematicHero';
 import { EraMenuSection } from '../components/menu/EraMenuSection';
 import { BrandStory } from '../components/story/BrandStory';
 import { EraRadio } from '../components/audio/EraRadio';
+import { AddaSessions } from '../components/audio/AddaSessions';
 import { OrderRitual } from '../components/order/OrderRitual';
 import { SiteFooter } from '../components/layout/SiteFooter';
 
@@ -191,7 +192,8 @@ export const OrderPage: React.FC = () => {
   // Filter curated products based on active Era
   const curatedIds = useMemo(() => {
     if (eraMode === '1900s') {
-      return ['prod-01', 'prod-03', 'prod-02', 'prod-05', 'prod-04', 'prod-06', 'prod-07'];
+      // Eight items fill the 4- and 2-column grids evenly, with no orphaned last card.
+      return ['prod-01', 'prod-03', 'prod-02', 'prod-05', 'prod-04', 'prod-06', 'prod-07', 'prod-10'];
     } else {
       return ['prod-08', 'prod-15', 'prod-09', 'prod-16', 'prod-14', 'prod-19', 'prod-18', 'prod-17'];
     }
@@ -340,6 +342,17 @@ export const OrderPage: React.FC = () => {
             isPlayingAudio={isPlayingAudio}
             onToggleAudio={toggleRadioAudio}
           />
+
+          {/* SECTION F·B: Adda sessions — evergreen video playlist, 1900s only */}
+          {eraMode === '1900s' && (
+            <AddaSessions
+              isPlayingAudio={isPlayingAudio}
+              onStart={() => {
+                radioAudio.stop();
+                setIsPlayingAudio(false);
+              }}
+            />
+          )}
 
           {/* SECTION G: The Order Ritual */}
           <OrderRitual />
