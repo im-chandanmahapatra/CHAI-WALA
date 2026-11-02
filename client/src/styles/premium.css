@@ -110,6 +110,28 @@ a {
   outline-offset: 3px;
 }
 
+/* Even line lengths: no single-word last lines in display type or body copy */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Tactile press response shared by every pill and round button */
+.hero-primary-cta:active,
+.hero-radio-cta:active,
+.card-plus-btn:active:not(:disabled),
+.primary-action:active:not(:disabled),
+.radio-circular-play-btn:active,
+.era-switch-pill:active {
+  transform: scale(0.97);
+  transition-duration: 0.12s;
+}
+
 ::selection {
   background: var(--accent, #cf9f62);
   color: var(--ink, #140d09);
@@ -226,6 +248,23 @@ a {
 .reveal-ready [data-reveal]:not(.is-visible) {
   opacity: 0;
   transform: translateY(28px);
+}
+
+/* Cards in a row arrive one after another instead of as a single block */
+.four-column-product-grid > :nth-child(4n + 2),
+.story-three-grid > :nth-child(2),
+.ritual-steps-three-col > :nth-child(2) {
+  transition-delay: 0.08s;
+}
+
+.four-column-product-grid > :nth-child(4n + 3),
+.story-three-grid > :nth-child(3),
+.ritual-steps-three-col > :nth-child(3) {
+  transition-delay: 0.16s;
+}
+
+.four-column-product-grid > :nth-child(4n + 4) {
+  transition-delay: 0.24s;
 }
 
 .grain {
@@ -1169,7 +1208,7 @@ a {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  transition: background-color 0.35s var(--ease), color 0.35s var(--ease), border-color 0.35s var(--ease);
+  transition: background-color 0.35s var(--ease), color 0.35s var(--ease), border-color 0.35s var(--ease), transform 0.4s var(--ease);
 }
 
 .card-plus-btn:hover:not(:disabled),
@@ -1514,6 +1553,273 @@ a {
 .radio-soundwave-bars.active-pulse .eq-bar:nth-child(3n) { animation-duration: 0.8s; }
 .radio-soundwave-bars.active-pulse .eq-bar:nth-child(3n + 1) { animation-duration: 1.35s; animation-delay: -0.3s; }
 .radio-soundwave-bars.active-pulse .eq-bar:nth-child(4n) { animation-delay: -0.6s; }
+
+/* ==========================================================================
+   ADDA SESSIONS (1900s video playlist)
+   ========================================================================== */
+
+/* Sits close under the radio card so the two read as one listening corner */
+.adda-sessions-section {
+  max-width: calc(var(--container) + 2 * var(--gutter));
+  margin: 0 auto;
+  padding: clamp(56px, 6.5vw, 96px) var(--gutter) 0;
+}
+
+.adda-sessions-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
+  align-items: end;
+  gap: clamp(24px, 5vw, 80px);
+  margin-bottom: clamp(32px, 4.5vw, 56px);
+}
+
+.adda-sessions-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 360;
+  font-size: clamp(38px, 5vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.adda-sessions-title em {
+  display: block;
+  color: var(--hilite);
+}
+
+.adda-sessions-aside p {
+  max-width: 400px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.adda-sessions-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adda-sessions-tags li {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* A dark cabinet with a brass hairline holds the screen, like an old cinema proscenium */
+.adda-screen-frame {
+  position: relative;
+  margin: 0;
+  padding: clamp(10px, 1.6vw, 22px);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    var(--ink);
+  box-shadow: 0 50px 100px -50px rgba(36, 22, 14, 0.7), inset 0 0 0 1px var(--on-ink-line);
+}
+
+.adda-screen-frame::before {
+  content: '';
+  position: absolute;
+  inset: clamp(5px, 0.8vw, 11px);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+  border-radius: calc(var(--radius-lg) - 6px);
+  pointer-events: none;
+}
+
+.adda-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: #050403;
+}
+
+.adda-screen iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.adda-screen-facade {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-ink);
+  cursor: pointer;
+}
+
+.adda-screen-facade img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: sepia(0.35) saturate(0.9) contrast(1.04);
+  transform: scale(1.02);
+  transition: transform 1.2s var(--ease), filter 0.8s var(--ease);
+}
+
+/* Warm vignette and film grain over the poster */
+.adda-screen-facade::before,
+.adda-screen-facade::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.adda-screen-facade::before {
+  background:
+    radial-gradient(ellipse at center, transparent 40%, rgba(20, 13, 9, 0.72) 100%),
+    linear-gradient(0deg, rgba(20, 13, 9, 0.94) 0%, rgba(20, 13, 9, 0.6) 22%, rgba(20, 13, 9, 0) 52%);
+}
+
+.adda-screen-facade::after {
+  background-image: var(--grain);
+  opacity: 0.18;
+  mix-blend-mode: overlay;
+}
+
+.adda-screen-facade:hover img,
+.adda-screen-facade:focus-visible img {
+  transform: scale(1.06);
+  filter: sepia(0.15) saturate(1) contrast(1.04);
+}
+
+.adda-screen-facade:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -6px;
+}
+
+.adda-screen-play {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: clamp(64px, 8vw, 96px);
+  height: clamp(64px, 8vw, 96px);
+  padding-left: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: 0 20px 50px -14px rgba(0, 0, 0, 0.7);
+  animation: pulse-ring 2.4s var(--ease) infinite;
+  transition: transform 0.5s var(--ease);
+}
+
+.adda-screen-facade:hover .adda-screen-play {
+  transform: scale(1.08);
+}
+
+.adda-screen-caption {
+  position: absolute;
+  z-index: 1;
+  left: clamp(18px, 3vw, 40px);
+  right: clamp(18px, 3vw, 40px);
+  bottom: clamp(16px, 2.6vw, 34px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font-family: var(--font-serif);
+  font-size: clamp(20px, 2.6vw, 36px);
+  font-weight: 360;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+}
+
+.adda-screen-caption small {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.adda-screen-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+  padding: clamp(14px, 1.8vw, 20px) clamp(6px, 1vw, 12px) clamp(4px, 0.6vw, 6px);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--on-ink-muted);
+}
+
+.adda-screen-reel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adda-screen-reel i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hilite);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.adda-screen-meta a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--on-ink);
+  text-decoration: none;
+  transition: color 0.3s var(--ease);
+}
+
+.adda-screen-meta a:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 960px) {
+  .adda-sessions-head {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+}
+
+/* Phone screens are too short for a caption and a play button; the section heading carries the title. */
+@media (max-width: 560px) {
+  .adda-screen-caption {
+    display: none;
+  }
+
+  .adda-screen-play {
+    width: 56px;
+    height: 56px;
+  }
+
+  .adda-screen-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    letter-spacing: 0.14em;
+  }
+}
 
 /* ==========================================================================
    RITUAL
@@ -2363,9 +2669,14 @@ legend small {
    RESPONSIVE
    ========================================================================== */
 
+/* Four columns hold down to tablet so the eight-item menu stays two even rows */
 @media (max-width: 1180px) {
-  .four-column-product-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .card-drink-title {
+    font-size: 20px;
+  }
+
+  .card-drink-desc {
+    font-size: 13.5px;
   }
 }
 
@@ -2479,7 +2790,7 @@ legend small {
   }
 
   .hero-text-column {
-    padding-top: 22vh;
+    padding-top: 9vh;
   }
 
   .hero-headline {
@@ -2652,22 +2963,46 @@ legend small {
   from { opacity: 0; transform: translateY(16px); }
 }
 
+/* Phones keep a compact two-up menu, like a printed card, instead of one tall photo per screen */
 @media (max-width: 420px) {
   .four-column-product-grid {
-    grid-template-columns: 1fr;
+    gap: 28px 12px;
   }
 
-  /* Landscape crop keeps a single-column menu from becoming an endless scroll */
   .card-photo-box {
-    aspect-ratio: 5 / 4;
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
   }
 
-  .card-title-price-line {
-    flex-direction: row;
+  .card-index {
+    top: 8px;
+    left: 8px;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+
+  .card-details-box {
+    padding-top: 12px;
+  }
+
+  .card-drink-title {
+    font-size: 17px;
+  }
+
+  .card-drink-price {
+    font-size: 13.5px;
+  }
+
+  .card-drink-desc {
+    margin: 6px 0 14px;
+    font-size: 12.5px;
+    line-height: 1.55;
   }
 
   .card-plus-btn {
-    width: auto;
+    height: 38px;
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
   }
 
   .slots {
