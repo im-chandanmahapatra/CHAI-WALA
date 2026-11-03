@@ -21,7 +21,6 @@ import { CinematicHero } from '../components/hero/CinematicHero';
 import { EraMenuSection } from '../components/menu/EraMenuSection';
 import { BrandStory } from '../components/story/BrandStory';
 import { EraRadio } from '../components/audio/EraRadio';
-import { AddaSessions } from '../components/audio/AddaSessions';
 import { OrderRitual } from '../components/order/OrderRitual';
 import { SiteFooter } from '../components/layout/SiteFooter';
 import { DynamicIslandPlayer } from '../components/audio/DynamicIslandPlayer';
@@ -354,17 +353,6 @@ export const OrderPage: React.FC = () => {
             isPlayingAudio={isPlayingAudio}
             onToggleAudio={toggleRadioAudio}
           />
-
-          {/* SECTION F·B: Adda sessions — evergreen video playlist, 1900s only */}
-          {eraMode === '1900s' && (
-            <AddaSessions
-              isPlayingAudio={isPlayingAudio}
-              onStart={() => {
-                radioAudio.stop();
-                setIsPlayingAudio(false);
-              }}
-            />
-          )}
 
           {/* SECTION G: The Order Ritual */}
           <OrderRitual />
