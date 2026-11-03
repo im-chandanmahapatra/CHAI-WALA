@@ -1,7 +1,7 @@
 /**
  * Chaiwala Radio Engine (Unified Native HTML5 Audio & Ambient Synthesis Engine)
- * - Native HTML5 audio playback for the 1900s Adda 90's Playlist (zero iframes, zero ads, instant playback)
- * - Web Audio ambient synthesis for the 2020s Café lo-fi station
+ * - Native HTML5 audio playback for the 90's Playlist across all eras (zero iframes, zero ads, instant playback)
+ * - Web Audio ambient synthesis fallback
  * - Synchronized track progress, seeking, and lyrics synchronization
  * - Ambient aura extraction with 1.5s crossfade
  * - Global event broadcasting for Hero, EraRadio, Dynamic Island, and Theatre Mode
@@ -65,31 +65,23 @@ class RadioAudioEngine {
       audio.volume = this.isMuted ? 0 : this.volume / 100;
 
       audio.addEventListener('timeupdate', () => {
-        if (this.currentMode === '1900s') {
-          this.currentTime = audio.currentTime;
-          this.detectCurrentTrack(this.currentTime);
-          this.notify();
-        }
+        this.currentTime = audio.currentTime;
+        this.detectCurrentTrack(this.currentTime);
+        this.notify();
       });
 
       audio.addEventListener('play', () => {
-        if (this.currentMode === '1900s') {
-          this.isPlaying = true;
-          this.notify();
-        }
+        this.isPlaying = true;
+        this.notify();
       });
 
       audio.addEventListener('pause', () => {
-        if (this.currentMode === '1900s') {
-          this.isPlaying = false;
-          this.notify();
-        }
+        this.isPlaying = false;
+        this.notify();
       });
 
       audio.addEventListener('ended', () => {
-        if (this.currentMode === '1900s') {
-          this.nextTrack();
-        }
+        this.nextTrack();
       });
 
       audio.addEventListener('error', (e) => {
@@ -161,11 +153,7 @@ class RadioAudioEngine {
     const track = PLAYLIST_TRACKS[index];
     this.duration = track.durationSeconds;
     this.currentTime = track.startSeconds;
-
-    if (this.currentMode !== '1900s') {
-      this.currentMode = '1900s';
-      this.stopOscillators();
-    }
+    this.stopOscillators();
 
     const audio = this.getAudio();
     if (audio) {
@@ -195,13 +183,11 @@ class RadioAudioEngine {
 
   public seekTo(seconds: number) {
     this.currentTime = seconds;
-    if (this.currentMode === '1900s') {
-      const audio = this.getAudio();
-      if (audio) {
-        try {
-          audio.currentTime = seconds;
-        } catch {}
-      }
+    const audio = this.getAudio();
+    if (audio) {
+      try {
+        audio.currentTime = seconds;
+      } catch {}
     }
     this.detectCurrentTrack(seconds);
     this.notify();
@@ -210,29 +196,20 @@ class RadioAudioEngine {
   public play(mode?: EraMode) {
     if (mode) this.currentMode = mode;
 
-    if (this.currentMode === '1900s') {
-      this.stopOscillators();
-      const audio = this.getAudio();
-      if (audio) {
-        audio.play().then(() => {
-          this.isPlaying = true;
-          this.notify();
-        }).catch((err) => {
-          console.warn('Native audio play error, falling back to ambient synthesis:', err);
-          this.playWebAudio('1900s');
-          this.isPlaying = true;
-          this.notify();
-        });
-      } else {
-        this.playWebAudio('1900s');
+    this.stopOscillators();
+    const audio = this.getAudio();
+    if (audio) {
+      audio.play().then(() => {
         this.isPlaying = true;
         this.notify();
-      }
+      }).catch((err) => {
+        console.warn('Native audio play error, falling back to ambient synthesis:', err);
+        void this.playWebAudio(this.currentMode);
+        this.isPlaying = true;
+        this.notify();
+      });
     } else {
-      if (this.audioElement) {
-        this.audioElement.pause();
-      }
-      this.playWebAudio('2020s');
+      void this.playWebAudio(this.currentMode);
       this.isPlaying = true;
       this.notify();
     }
@@ -333,25 +310,27 @@ class RadioAudioEngine {
     });
   }
 
-  // Web Audio Context fallback & 2020s lo-fi synthesis
+  // Web Audio Context fallback
   private initWebAudioContext() {
     if (this.ctx) return;
     try {
       const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AudioCtxClass();
       this.masterGain = this.ctx.createGain();
-      const currentVol = this.isMuted ? 0 : (this.volume / 100) * 0.35;
+      const currentVol = this.isMuted ? 0 : (this.volume / 100) * 0.4;
       this.masterGain.gain.setValueAtTime(currentVol, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
     } catch {}
   }
 
-  private playWebAudio(mode: EraMode) {
+  private async playWebAudio(mode: EraMode) {
     this.initWebAudioContext();
     if (!this.ctx || !this.masterGain) return;
 
     if (this.ctx.state === 'suspended') {
-      void this.ctx.resume();
+      try {
+        await this.ctx.resume();
+      } catch {}
     }
 
     this.stopOscillators();
@@ -360,7 +339,7 @@ class RadioAudioEngine {
     const now = ctx.currentTime;
 
     const freqs = mode === '1900s'
-      ? [138.59, 207.65, 277.18, 415.30] // C# harmonic tanpura & sitar drone fallback
+      ? [138.59, 207.65, 277.18, 415.30] // C# harmonic tanpura drone
       : [164.81, 246.94, 329.63, 493.88]; // E minor lo-fi electric Rhodes chord
 
     freqs.forEach((freq, idx) => {
@@ -378,9 +357,9 @@ class RadioAudioEngine {
       lfo.start();
       this.lfos.push(lfo);
 
-      const targetVolume = 0.05 / (idx + 1);
+      const targetVolume = 0.15 / (idx + 1);
       oscGain.gain.setValueAtTime(0, now);
-      oscGain.gain.linearRampToValueAtTime(targetVolume, now + 1.2);
+      oscGain.gain.linearRampToValueAtTime(targetVolume, now + 0.8);
 
       osc.connect(oscGain);
       oscGain.connect(this.masterGain!);
