@@ -1,16 +1,17 @@
 /**
- * Chaiwala Radio Engine (SaaS-Grade Unified Audio Controller)
- * - YouTube IFrame integration with precise track-level seeking for "1900s Adda"
+ * Chaiwala Radio Engine (Unified Native HTML5 Audio & Ambient Synthesis Engine)
+ * - Native HTML5 audio playback for the 1900s Adda 90's Playlist (zero iframes, zero ads, instant playback)
+ * - Web Audio ambient synthesis for the 2020s Café lo-fi station
+ * - Synchronized track progress, seeking, and lyrics synchronization
  * - Ambient aura extraction with 1.5s crossfade
- * - Live playback time synchronization for lyrics
- * - Web Audio ambient synthesis fallback & 2020s lo-fi engine
- * - Global event broadcasting for Dynamic Island, Theatre Mode, and Walkman Deck
+ * - Global event broadcasting for Hero, EraRadio, Dynamic Island, and Theatre Mode
  */
 
 import { PLAYLIST_TRACKS, TrackData } from './playlist-data';
 
 export type EraMode = '1900s' | '2020s';
 
+export const PLAYLIST_AUDIO_SRC = '/audio/90s_playlist.mp3';
 export const YOUTUBE_PLAYLIST_ID = '3KfZVtjsRdo';
 export const YOUTUBE_PLAYLIST_URL = 'https://youtu.be/3KfZVtjsRdo';
 
@@ -31,34 +32,6 @@ export interface AudioPlayerState {
 
 type AudioListener = (state: AudioPlayerState) => void;
 
-declare global {
-  interface Window {
-    YT?: {
-      Player: new (
-        elementId: string | HTMLElement,
-        config: {
-          videoId: string;
-          playerVars?: Record<string, string | number | boolean>;
-          events?: {
-            onReady?: (event: { target: any }) => void;
-            onStateChange?: (event: { data: number; target: any }) => void;
-            onError?: (event: { data: number }) => void;
-          };
-        }
-      ) => any;
-      PlayerState: {
-        UNSTARTED: number;
-        ENDED: number;
-        PLAYING: number;
-        PAUSED: number;
-        BUFFERING: number;
-        CUED: number;
-      };
-    };
-    onYouTubeIframeAPIReady?: () => void;
-  }
-}
-
 class RadioAudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -66,26 +39,67 @@ class RadioAudioEngine {
   private lfos: OscillatorNode[] = [];
   private voiceGains: GainNode[] = [];
 
+  private audioElement: HTMLAudioElement | null = null;
   private isPlaying: boolean = false;
   private currentMode: EraMode = '1900s';
   private currentTrackIndex: number = 0;
   private currentTime: number = 0;
-  private duration: number = PLAYLIST_TRACKS[0].durationSeconds;
+  private duration: number = PLAYLIST_TRACKS[0]?.durationSeconds || 318;
   private isMuted: boolean = false;
   private volume: number = 80;
   private theatreMode: boolean = false;
-
-  private ytPlayer: any = null;
-  private ytReady: boolean = false;
-  private ytFailed: boolean = false;
-  private ytPendingPlay: boolean = false;
-  private ytContainerId: string = 'chaiwala-yt-player';
-  private timePollTimer: number | null = null;
 
   private listeners: Set<AudioListener> = new Set();
 
   constructor() {
     this.initKeyboardShortcuts();
+  }
+
+  private getAudio(): HTMLAudioElement | null {
+    if (typeof window === 'undefined') return null;
+
+    if (!this.audioElement) {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.src = PLAYLIST_AUDIO_SRC;
+      audio.volume = this.isMuted ? 0 : this.volume / 100;
+
+      audio.addEventListener('timeupdate', () => {
+        if (this.currentMode === '1900s') {
+          this.currentTime = audio.currentTime;
+          this.detectCurrentTrack(this.currentTime);
+          this.notify();
+        }
+      });
+
+      audio.addEventListener('play', () => {
+        if (this.currentMode === '1900s') {
+          this.isPlaying = true;
+          this.notify();
+        }
+      });
+
+      audio.addEventListener('pause', () => {
+        if (this.currentMode === '1900s') {
+          this.isPlaying = false;
+          this.notify();
+        }
+      });
+
+      audio.addEventListener('ended', () => {
+        if (this.currentMode === '1900s') {
+          this.nextTrack();
+        }
+      });
+
+      audio.addEventListener('error', (e) => {
+        console.warn('Native audio load notice, using synthesizer fallback if necessary:', e);
+      });
+
+      this.audioElement = audio;
+    }
+
+    return this.audioElement;
   }
 
   public getState(): AudioPlayerState {
@@ -102,7 +116,7 @@ class RadioAudioEngine {
       theatreMode: this.theatreMode,
       auraColor: track.auraColor,
       auraGlow: track.auraGlow,
-      isYtReady: this.ytReady,
+      isYtReady: true,
     };
   }
 
@@ -125,115 +139,8 @@ class RadioAudioEngine {
     });
   }
 
-  public initYouTube(containerId: string = 'chaiwala-yt-player') {
-    this.ytContainerId = containerId;
-    if (typeof window === 'undefined') return;
-
-    if (this.ytPlayer) return;
-
-    const setupPlayer = () => {
-      if (!window.YT || !window.YT.Player) return;
-      const el = document.getElementById(this.ytContainerId);
-      if (!el) return;
-
-      try {
-        this.ytPlayer = new window.YT.Player(this.ytContainerId, {
-          videoId: YOUTUBE_PLAYLIST_ID,
-          playerVars: {
-            autoplay: 0,
-            controls: 1,
-            modestbranding: 1,
-            rel: 0,
-            playsinline: 1,
-            enablejsapi: 1,
-            loop: 1,
-            playlist: YOUTUBE_PLAYLIST_ID,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: () => {
-              this.ytReady = true;
-              if (this.ytPlayer && typeof this.ytPlayer.setVolume === 'function') {
-                this.ytPlayer.setVolume(this.volume);
-              }
-              if (this.ytPendingPlay && this.currentMode === '1900s') {
-                this.ytPendingPlay = false;
-                this.play('1900s');
-              }
-              this.notify();
-            },
-            onStateChange: (event: { data: number }) => {
-              if (event.data === 1) {
-                // PLAYING
-                if (this.currentMode === '1900s') {
-                  this.isPlaying = true;
-                  this.stopOscillators();
-                  this.startTimePolling();
-                  this.notify();
-                }
-              } else if (event.data === 2 || event.data === 0) {
-                // PAUSED or ENDED
-                if (this.currentMode === '1900s') {
-                  this.isPlaying = false;
-                  this.stopTimePolling();
-                  this.notify();
-                }
-              }
-            },
-            onError: (err: { data: number }) => {
-              console.warn('YouTube player error code:', err.data, '- activating ambient fallback');
-              this.ytFailed = true;
-              if (this.isPlaying && this.currentMode === '1900s') {
-                this.playWebAudio('1900s');
-              }
-            },
-          },
-        });
-      } catch (e) {
-        console.warn('Could not initialize YouTube player:', e);
-        this.ytFailed = true;
-      }
-    };
-
-    if (window.YT && window.YT.Player) {
-      setupPlayer();
-    } else {
-      const prevOnReady = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        if (prevOnReady) prevOnReady();
-        setupPlayer();
-      };
-
-      if (!document.querySelector('script[src*="youtube.com/iframe_api"]')) {
-        const tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        tag.async = true;
-        document.head.appendChild(tag);
-      }
-    }
-  }
-
-  private startTimePolling() {
-    this.stopTimePolling();
-    this.timePollTimer = window.setInterval(() => {
-      if (this.ytPlayer && typeof this.ytPlayer.getCurrentTime === 'function') {
-        try {
-          const sec = this.ytPlayer.getCurrentTime() || 0;
-          this.currentTime = sec;
-
-          // Auto-detect which track corresponds to the current timestamp
-          this.detectCurrentTrack(sec);
-          this.notify();
-        } catch {}
-      }
-    }, 250);
-  }
-
-  private stopTimePolling() {
-    if (this.timePollTimer) {
-      clearInterval(this.timePollTimer);
-      this.timePollTimer = null;
-    }
+  public initYouTube(_containerId: string = 'chaiwala-yt-player') {
+    // Replaced by native HTML5 audio for zero iframe clutter and instant playback
   }
 
   private detectCurrentTrack(sec: number) {
@@ -257,34 +164,18 @@ class RadioAudioEngine {
 
     if (this.currentMode !== '1900s') {
       this.currentMode = '1900s';
+      this.stopOscillators();
     }
 
-    this.stopOscillators();
-
-    if (this.ytReady && this.ytPlayer && typeof this.ytPlayer.seekTo === 'function') {
-      try {
-        this.ytPlayer.seekTo(track.startSeconds, true);
-        this.ytPlayer.playVideo();
-        this.isPlaying = true;
-        this.startTimePolling();
-        this.notify();
-        return;
-      } catch (e) {
-        console.warn('Error seeking YouTube track:', e);
-      }
-    }
-
-    if (!this.ytReady && !this.ytFailed) {
-      this.ytPendingPlay = true;
+    const audio = this.getAudio();
+    if (audio) {
+      audio.currentTime = track.startSeconds;
+      audio.play().catch((err) => {
+        console.warn('Audio play error:', err);
+      });
       this.isPlaying = true;
       this.notify();
-      return;
     }
-
-    // Fallback
-    this.playWebAudio('1900s');
-    this.isPlaying = true;
-    this.notify();
   }
 
   public nextTrack() {
@@ -294,7 +185,6 @@ class RadioAudioEngine {
 
   public prevTrack() {
     const track = PLAYLIST_TRACKS[this.currentTrackIndex];
-    // If playing more than 3 seconds into the track, replay current track from start
     if (this.currentTime - track.startSeconds > 4) {
       this.seekTo(track.startSeconds);
     } else {
@@ -305,10 +195,13 @@ class RadioAudioEngine {
 
   public seekTo(seconds: number) {
     this.currentTime = seconds;
-    if (this.ytReady && this.ytPlayer && typeof this.ytPlayer.seekTo === 'function') {
-      try {
-        this.ytPlayer.seekTo(seconds, true);
-      } catch {}
+    if (this.currentMode === '1900s') {
+      const audio = this.getAudio();
+      if (audio) {
+        try {
+          audio.currentTime = seconds;
+        } catch {}
+      }
     }
     this.detectCurrentTrack(seconds);
     this.notify();
@@ -319,56 +212,36 @@ class RadioAudioEngine {
 
     if (this.currentMode === '1900s') {
       this.stopOscillators();
-
-      if (this.ytReady && this.ytPlayer && typeof this.ytPlayer.playVideo === 'function') {
-        try {
-          this.ytPlayer.playVideo();
+      const audio = this.getAudio();
+      if (audio) {
+        audio.play().then(() => {
           this.isPlaying = true;
-          this.startTimePolling();
           this.notify();
-          return;
-        } catch (e) {
-          console.warn('Error invoking YouTube playVideo:', e);
-        }
-      }
-
-      if (!this.ytFailed && !this.ytReady) {
-        this.ytPendingPlay = true;
+        }).catch((err) => {
+          console.warn('Native audio play error, falling back to ambient synthesis:', err);
+          this.playWebAudio('1900s');
+          this.isPlaying = true;
+          this.notify();
+        });
+      } else {
+        this.playWebAudio('1900s');
         this.isPlaying = true;
         this.notify();
-        setTimeout(() => {
-          if (this.ytPendingPlay && this.isPlaying && this.currentMode === '1900s') {
-            this.ytPendingPlay = false;
-            this.playWebAudio('1900s');
-          }
-        }, 3500);
-        return;
       }
-
-      this.playWebAudio('1900s');
-      this.isPlaying = true;
-      this.notify();
     } else {
-      this.pauseYouTube();
+      if (this.audioElement) {
+        this.audioElement.pause();
+      }
       this.playWebAudio('2020s');
       this.isPlaying = true;
       this.notify();
     }
   }
 
-  private pauseYouTube() {
-    this.ytPendingPlay = false;
-    this.stopTimePolling();
-    if (this.ytReady && this.ytPlayer && typeof this.ytPlayer.pauseVideo === 'function') {
-      try {
-        this.ytPlayer.pauseVideo();
-      } catch {}
-    }
-  }
-
   public stop() {
-    this.ytPendingPlay = false;
-    this.pauseYouTube();
+    if (this.audioElement) {
+      this.audioElement.pause();
+    }
     this.stopOscillators();
     this.isPlaying = false;
     this.notify();
@@ -406,10 +279,8 @@ class RadioAudioEngine {
     if (this.isMuted && this.volume > 0) {
       this.isMuted = false;
     }
-    if (this.ytReady && this.ytPlayer && typeof this.ytPlayer.setVolume === 'function') {
-      try {
-        this.ytPlayer.setVolume(this.volume);
-      } catch {}
+    if (this.audioElement) {
+      this.audioElement.volume = this.isMuted ? 0 : this.volume / 100;
     }
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setValueAtTime((this.volume / 100) * 0.4, this.ctx.currentTime);
@@ -419,15 +290,9 @@ class RadioAudioEngine {
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
-    if (this.ytReady && this.ytPlayer) {
-      try {
-        if (this.isMuted) {
-          this.ytPlayer.mute();
-        } else {
-          this.ytPlayer.unMute();
-          this.ytPlayer.setVolume(this.volume);
-        }
-      } catch {}
+    if (this.audioElement) {
+      this.audioElement.muted = this.isMuted;
+      this.audioElement.volume = this.isMuted ? 0 : this.volume / 100;
     }
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : (this.volume / 100) * 0.4, this.ctx.currentTime);
@@ -436,12 +301,11 @@ class RadioAudioEngine {
     return this.isMuted;
   }
 
-  // Keyboard shortcut listener for native-SaaS polish
+  // Keyboard shortcut listener
   private initKeyboardShortcuts() {
     if (typeof window === 'undefined') return;
 
     window.addEventListener('keydown', (e) => {
-      // Ignore if user is typing in an input, textarea or search box
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;

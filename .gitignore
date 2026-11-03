@@ -30,3 +30,10 @@ npm-debug.log*
 
 # Unused design/QA images kept locally, not shipped
 design-archive/
+
+# Local media & report scratch artifacts
+/90's_playlist.mp3
+/output/
+/screenshots/
+/extracted_assets/
+*.docx
