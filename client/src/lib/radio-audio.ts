@@ -1,13 +1,15 @@
 /**
  * Chaiwala Radio Engine (Unified Native HTML5 Audio & Ambient Synthesis Engine)
- * - Native HTML5 audio playback for the 90's Playlist across all eras (zero iframes, zero ads, instant playback)
- * - Web Audio ambient synthesis fallback
- * - Synchronized track progress, seeking, and lyrics synchronization
- * - Ambient aura extraction with 1.5s crossfade
- * - Global event broadcasting for Hero, EraRadio, Dynamic Island, and Theatre Mode
+ * - Native HTML5 audio playback for:
+ *   - 1900s Era: Sunday Salon Barbershop Evergreen Classics (continuous tape master)
+ *   - 2020s Era: Café Radio Local 2000s Library (35 curated lossless tracks from 2000's vault)
+ * - Draggable seek-bar & instant seek synchronization
+ * - Apple Music-style ambient aura extraction with smooth crossfade
+ * - Theme-aware playlist switching with zero cross-playlist bleed
+ * - Global synchronization across Hero, EraRadio, DynamicIsland, and Theatre Mode
  */
 
-import { PLAYLIST_TRACKS, TrackData } from './playlist-data';
+import { CAFE_LIBRARY_TRACKS, getPlaylistForEra, PLAYLIST_TRACKS, TrackData } from './playlist-data';
 
 export type EraMode = '1900s' | '2020s';
 
@@ -17,13 +19,16 @@ export const YOUTUBE_PLAYLIST_URL = 'https://youtu.be/3KfZVtjsRdo';
 
 export interface AudioPlayerState {
   isPlaying: boolean;
+  isLoading: boolean;
+  loadError: string | null;
   currentMode: EraMode;
   currentTrackIndex: number;
   currentTrack: TrackData;
-  currentTime: number;
-  duration: number;
+  playlist: TrackData[];
+  currentTime: number; // in seconds relative to the current track (0 to duration)
+  duration: number;    // duration in seconds of current track
   isMuted: boolean;
-  volume: number; // 0 - 100
+  volume: number;      // 0 - 100
   theatreMode: boolean;
   auraColor: string;
   auraGlow: string;
@@ -41,6 +46,8 @@ class RadioAudioEngine {
 
   private audioElement: HTMLAudioElement | null = null;
   private isPlaying: boolean = false;
+  private isLoading: boolean = false;
+  private loadError: string | null = null;
   private currentMode: EraMode = '1900s';
   private currentTrackIndex: number = 0;
   private currentTime: number = 0;
@@ -48,11 +55,41 @@ class RadioAudioEngine {
   private isMuted: boolean = false;
   private volume: number = 80;
   private theatreMode: boolean = false;
+  private externalPlaybackLocked: boolean = false;
 
   private listeners: Set<AudioListener> = new Set();
+  private pendingPlayPromise: Promise<void> | null = null;
 
   constructor() {
-    this.initKeyboardShortcuts();
+    // Check initial era from localStorage / URL if in browser
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const urlEra = params.get('era') as EraMode;
+        if (urlEra === '2020s' || urlEra === '1900s') {
+          this.currentMode = urlEra;
+        } else {
+          const saved = localStorage.getItem('cw.era.v3') as EraMode;
+          if (saved === '2020s' || saved === '1900s') {
+            this.currentMode = saved;
+          }
+        }
+      } catch {}
+
+      const initialTrack = this.getCurrentTrack();
+      this.duration = initialTrack?.durationSeconds || 300;
+      this.initKeyboardShortcuts();
+      (window as unknown as { radioAudio: RadioAudioEngine }).radioAudio = this;
+    }
+  }
+
+  public getPlaylist(mode?: EraMode): TrackData[] {
+    return getPlaylistForEra(mode || this.currentMode);
+  }
+
+  public getCurrentTrack(): TrackData {
+    const list = this.getPlaylist();
+    return list[this.currentTrackIndex] || list[0];
   }
 
   private getAudio(): HTMLAudioElement | null {
@@ -60,18 +97,46 @@ class RadioAudioEngine {
 
     if (!this.audioElement) {
       const audio = new Audio();
+      audio.id = 'chaiwala-native-audio';
+      audio.style.display = 'none';
       audio.preload = 'metadata';
-      audio.src = PLAYLIST_AUDIO_SRC;
+      const initialTrack = this.getCurrentTrack();
+      audio.src = this.currentMode === '2020s' ? (initialTrack.src || PLAYLIST_AUDIO_SRC) : PLAYLIST_AUDIO_SRC;
       audio.volume = this.isMuted ? 0 : this.volume / 100;
 
+      if (typeof document !== 'undefined' && document.body && !document.getElementById('chaiwala-native-audio')) {
+        document.body.appendChild(audio);
+      }
+
       audio.addEventListener('timeupdate', () => {
-        this.currentTime = audio.currentTime;
-        this.detectCurrentTrack(this.currentTime);
+        if (this.currentMode === '1900s') {
+          const rawSec = audio.currentTime;
+          this.detectCurrentTrack1900s(rawSec);
+          const track = this.getCurrentTrack();
+          this.currentTime = Math.max(0, rawSec - track.startSeconds);
+          this.duration = track.durationSeconds;
+
+          // Track boundary in continuous file
+          if (rawSec >= track.startSeconds + track.durationSeconds - 0.25) {
+            this.nextTrack();
+            return;
+          }
+        } else {
+          // 2020s discrete tracks
+          this.currentTime = audio.currentTime;
+          if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+            this.duration = audio.duration;
+          } else {
+            this.duration = this.getCurrentTrack().durationSeconds;
+          }
+        }
         this.notify();
       });
 
       audio.addEventListener('play', () => {
         this.isPlaying = true;
+        this.isLoading = false;
+        this.loadError = null;
         this.notify();
       });
 
@@ -80,12 +145,38 @@ class RadioAudioEngine {
         this.notify();
       });
 
+      audio.addEventListener('waiting', () => {
+        this.isLoading = true;
+        this.notify();
+      });
+
+      audio.addEventListener('canplay', () => {
+        this.isLoading = false;
+        this.loadError = null;
+        this.notify();
+      });
+
+      audio.addEventListener('seeking', () => {
+        this.isLoading = true;
+        this.notify();
+      });
+
+      audio.addEventListener('seeked', () => {
+        this.isLoading = false;
+        this.notify();
+      });
+
       audio.addEventListener('ended', () => {
         this.nextTrack();
       });
 
-      audio.addEventListener('error', (e) => {
-        console.warn('Native audio load notice, using synthesizer fallback if necessary:', e);
+      audio.addEventListener('error', () => {
+        const err = audio.error;
+        console.warn('Native audio load error, error code:', err?.code, err?.message);
+        this.loadError = 'Audio playback error. Click retry or choose another track.';
+        this.isLoading = false;
+        this.isPlaying = false;
+        this.notify();
       });
 
       this.audioElement = audio;
@@ -95,14 +186,18 @@ class RadioAudioEngine {
   }
 
   public getState(): AudioPlayerState {
-    const track = PLAYLIST_TRACKS[this.currentTrackIndex] || PLAYLIST_TRACKS[0];
+    const track = this.getCurrentTrack();
+    const playlist = this.getPlaylist();
     return {
       isPlaying: this.isPlaying,
+      isLoading: this.isLoading,
+      loadError: this.loadError,
       currentMode: this.currentMode,
       currentTrackIndex: this.currentTrackIndex,
       currentTrack: track,
+      playlist: playlist,
       currentTime: this.currentTime,
-      duration: this.duration,
+      duration: this.duration || track.durationSeconds,
       isMuted: this.isMuted,
       volume: this.volume,
       theatreMode: this.theatreMode,
@@ -132,82 +227,160 @@ class RadioAudioEngine {
   }
 
   public initYouTube(_containerId: string = 'chaiwala-yt-player') {
-    // Replaced by native HTML5 audio for zero iframe clutter and instant playback
+    // Legacy stub - chaiwala uses native HTML5 audio for zero iframe lag
   }
 
-  private detectCurrentTrack(sec: number) {
-    for (let i = PLAYLIST_TRACKS.length - 1; i >= 0; i--) {
-      if (sec >= PLAYLIST_TRACKS[i].startSeconds) {
+  private detectCurrentTrack1900s(sec: number) {
+    const tracks = PLAYLIST_TRACKS;
+    for (let i = tracks.length - 1; i >= 0; i--) {
+      if (sec >= tracks[i].startSeconds) {
         if (this.currentTrackIndex !== i) {
           this.currentTrackIndex = i;
-          this.duration = PLAYLIST_TRACKS[i].durationSeconds;
+          this.duration = tracks[i].durationSeconds;
         }
         break;
       }
     }
   }
 
-  public playTrack(index: number) {
-    if (index < 0 || index >= PLAYLIST_TRACKS.length) return;
+  private playAudio(audio: HTMLAudioElement) {
+    this.isLoading = true;
+    this.loadError = null;
+    const promise = audio.play();
+    if (promise !== undefined) {
+      this.pendingPlayPromise = promise;
+      promise
+        .then(() => {
+          this.isPlaying = true;
+          this.isLoading = false;
+          this.loadError = null;
+          this.pendingPlayPromise = null;
+          this.notify();
+        })
+        .catch((err) => {
+          this.pendingPlayPromise = null;
+          if (err.name === 'AbortError') {
+            // Rapid next/prev skip - ignore expected abort
+            return;
+          }
+          console.warn('Native audio play error, falling back if necessary:', err);
+          this.isLoading = false;
+          this.isPlaying = false;
+          this.notify();
+        });
+    }
+  }
+
+  public playTrack(index: number, mode?: EraMode) {
+    if (this.externalPlaybackLocked) return;
+    if (mode && mode !== this.currentMode) {
+      this.currentMode = mode;
+    }
+
+    const playlist = this.getPlaylist();
+    if (index < 0 || index >= playlist.length) {
+      index = 0;
+    }
+
     this.currentTrackIndex = index;
-    const track = PLAYLIST_TRACKS[index];
+    const track = playlist[index];
     this.duration = track.durationSeconds;
-    this.currentTime = track.startSeconds;
+    this.currentTime = 0;
+    this.isLoading = true;
+    this.loadError = null;
     this.stopOscillators();
 
     const audio = this.getAudio();
     if (audio) {
-      audio.currentTime = track.startSeconds;
-      audio.play().catch((err) => {
-        console.warn('Audio play error:', err);
-      });
-      this.isPlaying = true;
+      const targetSrc = this.currentMode === '2020s'
+        ? (track.src || PLAYLIST_AUDIO_SRC)
+        : PLAYLIST_AUDIO_SRC;
+
+      // Only reassign src if it changed
+      const currentSrcPath = new URL(audio.src, window.location.href).pathname;
+      const targetSrcPath = new URL(targetSrc, window.location.href).pathname;
+
+      if (currentSrcPath !== targetSrcPath) {
+        audio.src = targetSrc;
+      }
+
+      const targetTime = this.currentMode === '1900s' ? track.startSeconds : 0;
+      try {
+        audio.currentTime = targetTime;
+      } catch {}
+
+      this.playAudio(audio);
       this.notify();
     }
   }
 
   public nextTrack() {
-    const nextIdx = (this.currentTrackIndex + 1) % PLAYLIST_TRACKS.length;
+    const playlist = this.getPlaylist();
+    const nextIdx = (this.currentTrackIndex + 1) % playlist.length;
     this.playTrack(nextIdx);
   }
 
   public prevTrack() {
-    const track = PLAYLIST_TRACKS[this.currentTrackIndex];
-    if (this.currentTime - track.startSeconds > 4) {
-      this.seekTo(track.startSeconds);
+    const playlist = this.getPlaylist();
+    // If more than 4 seconds in, restart track
+    if (this.currentTime > 4) {
+      this.seekTo(0);
     } else {
-      const prevIdx = (this.currentTrackIndex - 1 + PLAYLIST_TRACKS.length) % PLAYLIST_TRACKS.length;
+      const prevIdx = (this.currentTrackIndex - 1 + playlist.length) % playlist.length;
       this.playTrack(prevIdx);
     }
   }
 
-  public seekTo(seconds: number) {
-    this.currentTime = seconds;
+  public seekTo(relativeSeconds: number) {
+    const track = this.getCurrentTrack();
+    const maxDur = this.duration || track.durationSeconds;
+    const clamped = Math.max(0, Math.min(maxDur, relativeSeconds));
+    this.currentTime = clamped;
+
     const audio = this.getAudio();
     if (audio) {
       try {
-        audio.currentTime = seconds;
-      } catch {}
+        if (this.currentMode === '1900s') {
+          audio.currentTime = track.startSeconds + clamped;
+        } else {
+          audio.currentTime = clamped;
+        }
+      } catch (err) {
+        console.warn('Seek error:', err);
+      }
     }
-    this.detectCurrentTrack(seconds);
     this.notify();
   }
 
   public play(mode?: EraMode) {
-    if (mode) this.currentMode = mode;
+    if (this.externalPlaybackLocked) return;
+    if (mode && mode !== this.currentMode) {
+      this.setMode(mode, true);
+      return;
+    }
 
     this.stopOscillators();
     const audio = this.getAudio();
+    const track = this.getCurrentTrack();
+    const targetSrc = this.currentMode === '2020s'
+      ? (track.src || PLAYLIST_AUDIO_SRC)
+      : PLAYLIST_AUDIO_SRC;
+
     if (audio) {
-      audio.play().then(() => {
-        this.isPlaying = true;
-        this.notify();
-      }).catch((err) => {
-        console.warn('Native audio play error, falling back to ambient synthesis:', err);
-        void this.playWebAudio(this.currentMode);
-        this.isPlaying = true;
-        this.notify();
-      });
+      const currentSrcPath = new URL(audio.src, window.location.href).pathname;
+      const targetSrcPath = new URL(targetSrc, window.location.href).pathname;
+
+      if (currentSrcPath !== targetSrcPath) {
+        audio.src = targetSrc;
+        const targetTime = this.currentMode === '1900s'
+          ? track.startSeconds + this.currentTime
+          : this.currentTime;
+        try {
+          audio.currentTime = targetTime;
+        } catch {}
+      }
+
+      this.playAudio(audio);
     } else {
       void this.playWebAudio(this.currentMode);
       this.isPlaying = true;
@@ -225,6 +398,7 @@ class RadioAudioEngine {
   }
 
   public toggle(mode?: EraMode): boolean {
+    if (this.externalPlaybackLocked) return false;
     const targetMode = mode || this.currentMode;
     if (this.isPlaying && this.currentMode === targetMode) {
       this.stop();
@@ -235,9 +409,44 @@ class RadioAudioEngine {
     }
   }
 
-  public setMode(mode: EraMode) {
+  public setMode(mode: EraMode, startPlaying: boolean = false) {
+    if (this.currentMode === mode && !startPlaying) return;
+
+    const wasPlaying = this.isPlaying || startPlaying;
     this.currentMode = mode;
-    this.notify();
+    this.currentTrackIndex = 0;
+    this.currentTime = 0;
+
+    const track = this.getCurrentTrack();
+    this.duration = track.durationSeconds;
+
+    const audio = this.getAudio();
+    if (audio) {
+      audio.pause();
+      const targetSrc = this.currentMode === '2020s'
+        ? (track.src || PLAYLIST_AUDIO_SRC)
+        : PLAYLIST_AUDIO_SRC;
+      audio.src = targetSrc;
+      audio.currentTime = this.currentMode === '1900s' ? track.startSeconds : 0;
+
+      if (wasPlaying) {
+        this.playAudio(audio);
+      } else {
+        this.isPlaying = false;
+        this.notify();
+      }
+    } else {
+      this.notify();
+    }
+  }
+
+  public lockForExternalPlayback() {
+    this.externalPlaybackLocked = true;
+    this.stop();
+  }
+
+  public unlockExternalPlayback() {
+    this.externalPlaybackLocked = false;
   }
 
   public toggleTheatreMode(): boolean {
@@ -310,7 +519,7 @@ class RadioAudioEngine {
     });
   }
 
-  // Web Audio Context fallback
+  // Web Audio fallback
   private initWebAudioContext() {
     if (this.ctx) return;
     try {

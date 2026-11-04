@@ -24,7 +24,7 @@ const COPY = {
     sub: 'Modern sips, the same old adda.',
     body: 'A contemporary chai counter for a new generation — classic comfort meets matcha, cold brew and mindful pauses.',
     facts: ['Ceremonial Uji matcha', 'Boba, cold brew & lemon tea', 'Pickup in 15-minute windows'],
-    genre: 'Lo-fi & warm Rhodes',
+    genre: '2000s Melodies & Warm Acoustics',
   },
 } as const;
 

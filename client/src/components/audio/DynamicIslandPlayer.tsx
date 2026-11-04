@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Maximize2,
   Minimize2,
@@ -10,17 +10,14 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { AudioPlayerState, radioAudio } from '../../lib/radio-audio';
+import { formatSeconds } from './AudioSeekBar';
 import { SaasTooltip } from './SaasTooltip';
-
-const formatSeconds = (sec: number) => {
-  if (isNaN(sec) || sec < 0) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-};
 
 export const DynamicIslandPlayer: React.FC = () => {
   const [state, setState] = useState<AudioPlayerState>(() => radioAudio.getState());
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragSeconds, setDragSeconds] = useState(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     return radioAudio.subscribe((newState) => {
@@ -28,19 +25,54 @@ export const DynamicIslandPlayer: React.FC = () => {
     });
   }, []);
 
-  // Relative time within the current track
-  const trackElapsed = Math.max(0, state.currentTime - state.currentTrack.startSeconds);
+  const safeDuration = Math.max(1, state.duration || state.currentTrack.durationSeconds || 1);
+  const activeSeconds = isDragging ? dragSeconds : state.currentTime;
   const trackProgressPercent = Math.min(
     100,
-    Math.max(0, (trackElapsed / (state.currentTrack.durationSeconds || 1)) * 100)
+    Math.max(0, (activeSeconds / safeDuration) * 100)
   );
 
-  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickRatio = (e.clientX - rect.left) / rect.width;
-    const targetSecond =
-      state.currentTrack.startSeconds + clickRatio * state.currentTrack.durationSeconds;
-    radioAudio.seekTo(targetSecond);
+  const calculateSecondsFromClientX = (clientX: number): number => {
+    if (!trackRef.current) return 0;
+    const rect = trackRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return ratio * safeDuration;
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const sec = calculateSecondsFromClientX(e.clientX);
+    setIsDragging(true);
+    setDragSeconds(sec);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      const sec = calculateSecondsFromClientX(e.clientX);
+      setDragSeconds(sec);
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDragging) {
+      const sec = calculateSecondsFromClientX(e.clientX);
+      radioAudio.seekTo(sec);
+      setIsDragging(false);
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      radioAudio.seekTo(Math.min(safeDuration, state.currentTime + 5));
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      radioAudio.seekTo(Math.max(0, state.currentTime - 5));
+    }
   };
 
   return (
@@ -62,16 +94,16 @@ export const DynamicIslandPlayer: React.FC = () => {
       <div className="dynamic-island-pill">
         {/* Left Segment: Live Visualizer & Track Metadata */}
         <div className="island-meta-segment">
-          {/* FEATURE 1: Dynamic Live Visualizer (The 'Real' Factor) */}
+          {/* Live Visualizer */}
           <div
             className={`dynamic-live-visualizer ${state.isPlaying ? 'is-playing' : 'is-paused'}`}
             title={state.isPlaying ? 'Audio Frequency EQ: Active' : 'Audio Frequency EQ: Paused'}
             aria-label="Frequency visualizer"
           >
-            <span className="eq-bar bar-1" />
-            <span className="eq-bar bar-2" />
-            <span className="eq-bar bar-3" />
-            <span className="eq-bar bar-4" />
+            <span className="eq-bar bar-1" style={{ backgroundColor: state.auraColor }} />
+            <span className="eq-bar bar-2" style={{ backgroundColor: state.auraColor }} />
+            <span className="eq-bar bar-3" style={{ backgroundColor: state.auraColor }} />
+            <span className="eq-bar bar-4" style={{ backgroundColor: state.auraColor }} />
           </div>
 
           <div
@@ -89,7 +121,7 @@ export const DynamicIslandPlayer: React.FC = () => {
           </div>
         </div>
 
-        {/* Center Segment: Transport Controls with FEATURE 4 SaaS-Grade Tooltips */}
+        {/* Center Segment: Transport Controls */}
         <div className="island-transport-segment">
           <SaasTooltip label="Previous Track" shortcut="Alt+←">
             <button
@@ -111,6 +143,10 @@ export const DynamicIslandPlayer: React.FC = () => {
               className={`transport-btn primary ${state.isPlaying ? 'is-playing' : ''}`}
               onClick={() => radioAudio.toggle()}
               aria-label={state.isPlaying ? 'Pause playback' : 'Start playback'}
+              style={{
+                backgroundColor: state.auraColor,
+                boxShadow: state.isPlaying ? `0 0 16px 2px ${state.auraGlow}` : undefined,
+              }}
             >
               {state.isPlaying ? (
                 <Pause size={17} />
@@ -132,12 +168,12 @@ export const DynamicIslandPlayer: React.FC = () => {
           </SaasTooltip>
         </div>
 
-        {/* Right Segment: Time, Mute & FEATURE 2 Minimalist Theatre Mode Toggle */}
+        {/* Right Segment: Time, Mute & Theatre Mode Toggle */}
         <div className="island-action-segment">
           <div className="island-time-display" aria-label="Track time">
-            <span className="time-current">{formatSeconds(trackElapsed)}</span>
+            <span className="time-current">{formatSeconds(activeSeconds)}</span>
             <span className="time-sep">/</span>
-            <span className="time-total">{formatSeconds(state.currentTrack.durationSeconds)}</span>
+            <span className="time-total">{formatSeconds(safeDuration)}</span>
           </div>
 
           <SaasTooltip label={state.isMuted ? 'Unmute' : 'Mute'} shortcut="M">
@@ -151,7 +187,6 @@ export const DynamicIslandPlayer: React.FC = () => {
             </button>
           </SaasTooltip>
 
-          {/* Minimalist Theatre Mode Toggle Icon with spring tooltip */}
           <SaasTooltip
             label={state.theatreMode ? 'Exit Theatre' : 'Theatre Mode'}
             shortcut="T"
@@ -169,15 +204,21 @@ export const DynamicIslandPlayer: React.FC = () => {
           </SaasTooltip>
         </div>
 
-        {/* Micro-Progress Bar along the bottom of the Dynamic Island */}
+        {/* Micro-Progress Bar along the bottom of the Dynamic Island - Draggable & Clickable */}
         <div
-          className="island-progress-track"
-          onClick={handleSeek}
+          ref={trackRef}
+          className={`island-progress-track ${isDragging ? 'is-dragging' : ''}`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onKeyDown={handleKeyDown}
           role="slider"
+          tabIndex={0}
           aria-label="Seek track position"
-          aria-valuenow={Math.round(trackProgressPercent)}
+          aria-valuenow={Math.round(activeSeconds)}
           aria-valuemin={0}
-          aria-valuemax={100}
+          aria-valuemax={Math.round(safeDuration)}
+          aria-valuetext={`${formatSeconds(activeSeconds)} of ${formatSeconds(safeDuration)}`}
         >
           <div
             className="island-progress-bar"
@@ -186,9 +227,17 @@ export const DynamicIslandPlayer: React.FC = () => {
               backgroundColor: state.auraColor,
             }}
           />
+          {isDragging && (
+            <div
+              className="island-progress-scrub-tooltip"
+              style={{ left: `${trackProgressPercent}%` }}
+              aria-hidden="true"
+            >
+              {formatSeconds(dragSeconds)}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 };
-

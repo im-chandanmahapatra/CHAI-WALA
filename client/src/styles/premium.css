@@ -1497,6 +1497,103 @@ p {
   color: var(--on-ink-muted);
 }
 
+.spotify-playlist-embed {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 28px;
+  overflow: hidden;
+  border: 1px solid var(--on-ink-line);
+  border-radius: var(--radius-md);
+  background: #121212;
+  box-shadow: 0 24px 54px -24px rgba(0, 0, 0, 0.85);
+}
+
+.spotify-playlist-embed iframe {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 0;
+}
+
+.spotify-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 16px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.spotify-open-link:hover {
+  color: var(--on-ink);
+  transform: translateX(2px);
+}
+
+.radio-ambient-companion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 480px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--on-ink-line);
+}
+
+.radio-ambient-companion p {
+  max-width: 300px;
+  margin: 6px 0 0;
+  color: var(--on-ink-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.radio-ambient-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--on-ink);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.radio-ambient-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid var(--on-ink-line);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--on-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.radio-ambient-toggle:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--ink);
+}
+
+.radio-ambient-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .radio-audio-controls-cluster {
   display: flex;
   flex-wrap: wrap;
@@ -2871,6 +2968,21 @@ legend small {
     width: 100%;
     justify-content: center;
     padding: 0 10px;
+  }
+
+  .spotify-playlist-embed,
+  .radio-ambient-companion {
+    max-width: none;
+  }
+
+  .radio-ambient-companion {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .radio-ambient-toggle {
+    width: 100%;
   }
 
   .footer-columns {
