@@ -71,6 +71,7 @@ export const OrderPage: React.FC = () => {
   // Audio state
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [audioState, setAudioState] = useState<AudioPlayerState>(() => radioAudio.getState());
+  const [isSpotifyListening, setIsSpotifyListening] = useState(false);
 
   // Search & Catalog
   const [search, setSearch] = useState('');
@@ -118,14 +119,19 @@ export const OrderPage: React.FC = () => {
     } catch {}
 
     if (isPlayingAudio) {
-      radioAudio.play(mode);
+      radioAudio.setMode(mode, true);
     } else {
-      radioAudio.setMode(mode);
+      radioAudio.setMode(mode, false);
     }
   };
 
   const toggleRadioAudio = () => {
     radioAudio.toggle(eraMode);
+  };
+
+  const handleSpotifyInteraction = () => {
+    setIsSpotifyListening(true);
+    radioAudio.lockForExternalPlayback();
   };
 
   // Sync state with radioAudio engine

@@ -1,3 +1,5 @@
+import { CAFE_LIBRARY_TRACKS } from './cafe-library-manifest';
+
 export interface LyricLine {
   time: number; // in seconds
   text: string;
@@ -7,15 +9,20 @@ export interface TrackData {
   id: string;
   title: string;
   artist: string;
-  composer: string;
-  lyricist: string;
+  composer?: string;
+  lyricist?: string;
   movie?: string;
+  album?: string;
   year?: string;
   startSeconds: number;
   durationSeconds: number;
   auraColor: string; // Hex color for Apple Music style ambient glow
   auraGlow: string;  // CSS rgba string
-  lyrics: LyricLine[];
+  lyrics?: LyricLine[];
+  src?: string;
+  filename?: string;
+  originalPath?: string;
+  identificationStatus?: 'identified' | 'unidentified';
 }
 
 export const PLAYLIST_TRACKS: TrackData[] = [
@@ -330,5 +337,11 @@ export const AMBIENT_AURA_MAP: Record<string, { auraColor: string; auraGlow: str
   'khuda jaane': { auraColor: '#0284C7', auraGlow: 'rgba(2, 132, 199, 0.65)' },
   'default 1900s': { auraColor: '#D97706', auraGlow: 'rgba(217, 119, 6, 0.65)' },
   'default 2020s': { auraColor: '#0D9488', auraGlow: 'rgba(13, 148, 136, 0.65)' },
+};
+
+export { CAFE_LIBRARY_TRACKS };
+
+export const getPlaylistForEra = (era: '1900s' | '2020s'): TrackData[] => {
+  return era === '2020s' ? CAFE_LIBRARY_TRACKS : PLAYLIST_TRACKS;
 };
 

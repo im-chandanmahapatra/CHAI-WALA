@@ -32,6 +32,7 @@ npm-debug.log*
 design-archive/
 
 # Local media & report scratch artifacts
+/2000's/
 /90's_playlist.mp3
 /output/
 /screenshots/
