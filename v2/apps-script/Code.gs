@@ -122,7 +122,7 @@ function createOrder_(b) {
   const phone = String(b.phone || '').replace(/\D/g, '').slice(-10);
   if (name.length < 2 || name.length > 40) throw new Error('Please enter your name.');
   if (!/^[6-9]\d{9}$/.test(phone)) throw new Error('Please enter a valid 10-digit mobile number.');
-  const era = b.era === 'cafe' ? 'cafe' : 'adda';
+  const era = ['adda', 'y2k', 'cafe'].indexOf(b.era) !== -1 ? b.era : 'adda';
   const priced = priceCart_(b.items);
   if (priced.total < 100) throw new Error('Order total is too low.');
 
@@ -166,7 +166,7 @@ function markPaid_(orderId, paymentId) {
     const props = PropertiesService.getScriptProperties();
     const n = Number(props.getProperty('seq_' + day) || 0) + 1;
     props.setProperty('seq_' + day, String(n));
-    const token = (row.get(C.era) === 'cafe' ? 'C' : 'A') + '-' + ('00' + n).slice(-3);
+    const token = ({ adda: 'A', y2k: 'Y', cafe: 'C' }[row.get(C.era)] || 'A') + '-' + ('00' + n).slice(-3);
     const q = queueInfo_();
     row.set(C.token, token); row.set(C.payment, paymentId); row.set(C.status, 'PAID');
     row.set(C.paidAt, new Date()); row.set(C.eta, Math.max(Number(row.get(C.eta)) || 3, q.eta));
@@ -397,25 +397,26 @@ function setup() {
 
 // price in rupees; owner edits these in the Menu tab afterwards
 const MENU_SEED = [
+  // era: adda = 1900s, y2k = 2000s, cafe = 2020s
+  ['masala-chai', 'Masala Chai', 'adda', 'chai', 45, 4, true, 'sugar,size_adda'],
   ['adrak-chai', 'Adrak Chai', 'adda', 'chai', 40, 4, true, 'sugar,size_adda'],
   ['elaichi-chai', 'Elaichi Chai', 'adda', 'chai', 40, 4, true, 'sugar,size_adda'],
-  ['masala-chai', 'Masala Chai', 'adda', 'chai', 45, 4, true, 'sugar,size_adda'],
   ['cutting-chai', 'Cutting Chai', 'adda', 'chai', 25, 3, true, 'sugar,size_adda'],
   ['bun-maska', 'Bun Maska', 'adda', 'bites', 45, 3, true, ''],
   ['biscuit-plate', 'Biscuit Plate', 'adda', 'bites', 30, 2, true, ''],
-  ['hot-coffee', 'Hot Filter Coffee', 'cafe', 'coffee', 60, 4, true, 'sugar,size_cafe'],
-  ['hot-chocolate', 'Artisan Hot Chocolate', 'cafe', 'coffee', 95, 5, true, ''],
-  ['lemon-tea', 'Fresh Lemon Tea', 'cafe', 'tea', 50, 3, true, ''],
-  ['ginger-tea', 'Herbal Ginger Tea', 'cafe', 'tea', 50, 3, true, ''],
+  ['cold-coffee', 'Classic Cold Coffee', 'y2k', 'cold', 90, 5, true, ''],
+  ['hot-coffee', 'Hot Filter Coffee', 'y2k', 'coffee', 60, 4, true, 'sugar,size_cafe'],
+  ['hot-chocolate', 'Hot Chocolate', 'y2k', 'coffee', 95, 5, true, ''],
+  ['veg-grilled-sandwich', 'Veg Grilled Sandwich', 'y2k', 'bites', 90, 8, true, 'cheese'],
+  ['chocolate-pastry', 'Truffle Pastry', 'y2k', 'sweets', 85, 2, true, ''],
+  ['brownie', 'Sea Salt Brownie', 'y2k', 'sweets', 80, 2, true, ''],
   ['matcha-latte', 'Uji Matcha Oat Latte', 'cafe', 'cold', 140, 5, true, 'sugar,size_cafe'],
   ['iced-coffee', 'Citrus Tonic Cold Brew', 'cafe', 'cold', 100, 5, true, ''],
   ['boba-tea', 'Brown Sugar Pearl Boba', 'cafe', 'cold', 150, 6, true, 'boba'],
-  ['cold-coffee', 'Classic Cold Coffee', 'cafe', 'cold', 90, 5, true, ''],
-  ['butter-croissant', 'Artisan Butter Croissant', 'cafe', 'bites', 90, 2, true, ''],
-  ['veg-grilled-sandwich', 'Veg Grilled Sandwich', 'cafe', 'bites', 90, 8, true, 'cheese'],
+  ['lemon-tea', 'Fresh Lemon Tea', 'cafe', 'tea', 50, 3, true, ''],
+  ['ginger-tea', 'Herbal Ginger Tea', 'cafe', 'tea', 50, 3, true, ''],
+  ['butter-croissant', 'Butter Croissant', 'cafe', 'bites', 90, 2, true, ''],
   ['jalapeno-cheese-sandwich', 'Jalapeño Melt Toastie', 'cafe', 'bites', 120, 8, true, 'cheese'],
-  ['chocolate-pastry', 'Belgian Truffle Pastry', 'cafe', 'sweets', 85, 2, true, ''],
-  ['brownie', 'Sea Salt Fudgy Brownie', 'cafe', 'sweets', 80, 2, true, ''],
 ];
 
 const OPTION_SEED = [

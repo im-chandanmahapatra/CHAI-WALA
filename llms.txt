@@ -1,0 +1,40 @@
+# Chaiwala
+
+> A three-era chai and coffee counter in India. Customers order online without an account, pay with UPI, cards or wallets through Razorpay, and collect their order at the counter by showing a single-use QR token.
+
+## Pages
+
+- [Order](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/): the ordering page with the live menu, order summary and token pass
+- [Menu](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/menu/): every item with prices in rupees, grouped by era
+- [How it works](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/how-it-works/): the ordering, payment and token process, with FAQs
+
+## Menu
+
+### 1900s: The Adda
+- Masala Chai: ₹45. Seven-spice house masala, steeped deep over a slow flame.
+- Adrak Chai: ₹40. Hand-crushed ginger and Assam CTC. The street-side morning bite.
+- Elaichi Chai: ₹40. Green cardamom cracked fresh into rich slow-boiled milk tea.
+- Cutting Chai: ₹25. The quick half-glass recharge. Strong, sweet, tapri style.
+- Bun Maska: ₹45. Soft bakery bun with a generous slab of salted butter. Dip it.
+- Biscuit Plate: ₹30. Osmania butter biscuits and cumin crackers for dunking.
+
+### 2000s: The Coffee House
+- Classic Cold Coffee: ₹90. Thick, frothy, blended. The coffee-house shake you split two ways.
+- Hot Filter Coffee: ₹60. South Indian decoction pulled high with frothed milk.
+- Hot Chocolate: ₹95. Dark cocoa churned with steamed milk. Rainy-day essential.
+- Veg Grilled Sandwich: ₹90. Bombay-style toastie with green chutney and molten cheese.
+- Truffle Pastry: ₹85. Dark sponge layered with silky truffle ganache.
+- Sea Salt Brownie: ₹80. 70% dark chocolate with a crackle top and flaky salt.
+
+### 2020s: The Café
+- Uji Matcha Oat Latte: ₹140. Ceremonial grade matcha whisked over silky oat milk.
+- Citrus Tonic Cold Brew: ₹100. 16-hour cold brew over tonic, crystal ice and orange peel.
+- Brown Sugar Pearl Boba: ₹150. Roasted milk tea, warm brown sugar marbling, chewy pearls.
+- Fresh Lemon Tea: ₹50. Clear black tea, hand-squeezed lemon and sweet mint.
+- Herbal Ginger Tea: ₹50. Dairy-free ginger root infusion with honey and lemon.
+- Butter Croissant: ₹90. Hand-laminated, honeycomb layers, cultured butter.
+- Jalapeño Melt Toastie: ₹120. Sourdough, aged cheddar and pickled jalapeño heat.
+
+## Notes
+
+- Staff pages (/counter/, /board/) are not for customers and are excluded from indexing.
