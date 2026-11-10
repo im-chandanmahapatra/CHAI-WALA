@@ -64,6 +64,19 @@ class RangeHandler(http.server.SimpleHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
             pass  # the browser cancels requests while seeking - this is normal
 
+    def send_error(self, code, message=None, explain=None):
+        page = os.path.join(ROOT, "404.html")
+        if code == 404 and os.path.isfile(page):  # mimic GitHub Pages: custom 404 for any missing URL
+            body = open(page, "rb").read()
+            self.send_response(404)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            if self.command != "HEAD":
+                self.wfile.write(body)
+            return
+        super().send_error(code, message, explain)
+
     def log_message(self, fmt, *args):
         pass  # keep the console quiet
 
@@ -75,5 +88,5 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 if __name__ == "__main__":
     with Server(("127.0.0.1", PORT), RangeHandler) as httpd:
-        print(f"Chaiwala v2 -> http://localhost:{PORT}/v2/   (counter: /v2/#counter | board: /v2/#board)", flush=True)
+        print(f"Chaiwala v2 -> http://localhost:{PORT}/v2/   (counter: /v2/counter/ | board: /v2/board/)", flush=True)
         httpd.serve_forever()
