@@ -1,96 +1,128 @@
-# Chaiwala v2 — order, pay, pick up
+# Chaiwala V2 — Application & Build Guide
 
-Three eras, one counter. **Pick → pay with Razorpay → get a signed token → show it at the counter.**
-No login, no cart page, no server to run: Google Apps Script plus a Google Sheet is the backend.
+Three eras, one counter: **Pick → pay with Razorpay → get a signed QR token → collect at the counter.**  
+No login, no separate backend server to host: static HTML/CSS/JS paired with Google Apps Script and a Google Sheet.
 
-## Pages (clean URLs)
+---
 
-| URL | What it is | Indexed |
-|---|---|---|
-| `/v2/` | Landing page: era fan, scroll-expanding story, the three eras, how it works, signatures, soundtrack, FAQ | yes |
-| `/v2/order/` | Ordering app: era banner, signatures, pairs, sound system, live menu, order sheet, token pass (`?era=adda\|y2k\|cafe`, `?add=<item>`) | yes |
-| `/v2/menu/` | Full menu with prices, all three eras (static HTML) | yes |
-| `/v2/how-it-works/` | How token ordering works, plus FAQs | yes |
-| `/v2/counter/` | Staff counter: PIN, queue, QR scanner | no (noindex) |
-| `/v2/board/` | Now-serving TV board | no (noindex) |
-| `/404.html` | Custom not-found page, served by the host for any missing URL | no |
+## Module Purpose & Responsibilities
 
-Every page has its own title, meta description, canonical URL, Open Graph and Twitter image, one H1, breadcrumbs (inner pages) and JSON-LD:
-`WebSite` + `CafeOrCoffeeShop` (home), `Menu` + `BreadcrumbList` (menu), `FAQPage` + `BreadcrumbList` (how it works).
-Also generated: `sitemap.xml`, `/robots.txt`, `llms.txt`, `site.webmanifest`, and the favicon set in `icons/`.
+`v2/` is the active production web application of Chaiwala. It separates unminified source files (`app/`), Python static page/SEO generation (`tools/`), optimized static assets (`img/`, `brand/`, `fonts/`, `icons/`, `og/`), and the serverless backend (`apps-script/`), while sharing the curated audio library from [`../client/public/audio/`](../client/public/audio/).
 
-## Folder layout
+## Pages & Clean URLs
 
-```
+| URL Path | Page | Indexed | Notes |
+|---|---|---|---|
+| `/v2/` | [`index.html`](index.html) | Yes | Editorial landing page: era fan, scroll-expanding story, three eras, how it works, signatures bento grid, soundtrack preview, FAQ |
+| `/v2/order/` | [`order/index.html`](order/index.html) | Yes | Interactive ordering counter: era switcher (`?era=adda\|y2k\|cafe`), deep-link add (`?add=<id>`), coverflow pairs, No. 03 sound system, inline card customization, slide-to-pay sheet, signed QR token pass |
+| `/v2/menu/` | [`menu/index.html`](menu/index.html) | Yes | Static full menu with prices across all 3 eras and JSON-LD `Menu` schema |
+| `/v2/how-it-works/` | [`how-it-works/index.html`](how-it-works/index.html) | Yes | Token workflow walkthrough, server-pricing explanation, and `FAQPage` JSON-LD |
+| `/v2/counter/` | [`counter/index.html`](counter/index.html) | No (`noindex`) | Staff counter console: PIN gate, 3-lane live queue (`PAID`, `BREWING`, `READY`), camera QR scanner + manual token collection |
+| `/v2/board/` | [`board/index.html`](board/index.html) | No (`noindex`) | Shop TV display showing *Preparing* and *Ready to collect* token numbers |
+| `/404.html` | [`../404.html`](../404.html) | No (`noindex`) | Host-level custom 404 page with runtime base-path detection (`/CHAI-WALA/v2/` or `/v2/`) |
+
+---
+
+## Folder Layout
+
+```text
 v2/
-├── app/app.js, app/app.css, app/landing.js   ← SOURCE: edit these
-├── DESIGN.md                 ← colours, type, spacing and components for all three eras
-├── assets/                   ← built: minified app.js / app.css (no source maps)
-├── tools/build.py            ← regenerates every page + SEO files from the source
-│   └── pages_landing.py      ← landing and order page templates
-├── img/                      ← WebP photos (8.7 MB of originals → 1.1 MB)
-├── og/                       ← 1200×630 social share images
-├── brand/                    ← logo SVGs (lockups, marks, app icon)
-├── icons/, favicon.ico, site.webmanifest
-├── fonts/                    ← self-hosted Geist, Geist Mono, Instrument Serif
-├── apps-script/              ← Code.gs + appsscript.json (the backend)
-├── serve.py                  ← local server with audio seeking + custom 404
-└── index.html, menu/, how-it-works/, counter/, board/, sitemap.xml, llms.txt
+├── app/                            # SOURCE: edit these JS/CSS files directly
+│   ├── app.js                      # Ordering app, Demo/Live API adapters, QR encoder, Sound System, Counter & Board UI
+│   ├── app.css                     # Three-era CSS tokens and responsive layout rules
+│   └── landing.js                  # Scroll-driven landing page motion layer + active token pill
+├── assets/                         # BUILT: minified JS/CSS output by tools/build.py (no source maps)
+│   ├── app.js
+│   ├── app.css
+│   └── landing.js
+├── apps-script/                    # Serverless backend (Code.gs, appsscript.json, README.md)
+├── brand/                          # Outlined SVG logo lockups (dark/light, horizontal/stacked, marks, app icon)
+├── fonts/                          # Self-hosted Geist, Geist Mono, and Instrument Serif WOFF2 + fonts.css
+├── icons/                          # SVG & PNG favicons, Apple touch icon, PWA maskable icons
+├── img/                            # Optimized WebP photography (19 item/scene photos + token-qr.svg)
+├── og/                             # 1200x630 Open Graph / Twitter share cards (home.jpg, menu.jpg, how-it-works.jpg)
+├── tools/                          # Static site & SEO generator
+│   ├── build.py                    # Parses MENU from app/app.js, minifies assets/, writes HTML + SEO + 404.html
+│   └── pages_landing.py            # Templates for /v2/ landing page and /v2/order/ shell
+├── index.html                      # Generated landing page
+├── order/index.html                # Generated ordering shell
+├── menu/index.html                 # Generated menu page
+├── how-it-works/index.html         # Generated how-it-works & FAQ page
+├── counter/index.html              # Generated staff counter shell
+├── board/index.html                # Generated TV board shell
+├── DESIGN.md                       # Color tokens, typography scale, spacing, and logo guidelines
+├── README.md                       # This file
+├── serve.py                        # Local Python server with HTTP 206 Range support & custom 404
+├── site.webmanifest                # Standalone PWA manifest
+├── sitemap.xml                     # Generated sitemap
+└── llms.txt                        # Generated LLM site & menu summary
 ```
-Music is shared with v1 from `client/public/audio`.
 
-## Brand
+> **Audio dependency:** [`v2/app/app.js`](app/app.js#L23) resolves audio paths via `../client/public/audio/`, pointing to [`client/public/audio/`](../client/public/audio/) (`90s_playlist.mp3` and `2000s/` + `2000s-manifest.json`). Keep both `v2/` and `client/public/audio/` hosted under the same origin root.
 
-The logo (a ketli under a café arch) is in `v2/brand/` as SVGs: horizontal and stacked lockups on dark and light, the outline and solid marks, a one-colour version, and the app icon. Usage rules are in `DESIGN.md` → Logo.
+---
 
-## Run it locally (demo mode)
+## Brand & Design System
+
+Full visual tokens, contrast targets, spacing scales, and logo clear-space rules live in [`DESIGN.md`](DESIGN.md). Eight outlined SVGs are maintained in `brand/`:
+
+- `chaiwala-logo-horizontal-on-dark.svg` / `chaiwala-logo-horizontal-on-light.svg`
+- `chaiwala-logo-stacked-on-dark.svg` / `chaiwala-logo-stacked-on-light.svg`
+- `chaiwala-mark.svg` / `chaiwala-mark-solid.svg`
+- `chaiwala-logo-one-colour.svg` / `chaiwala-app-icon.svg`
+
+### The Three Eras
+
+| Era Key | Label | Aesthetic | Token Prefix | Sound System |
+|---|---|---|---|---|
+| `adda` | 1900s · The Adda | Espresso (`#0E0A07`) & brass (`#D4A657`), railway-ticket pass | `A-` | `WM-1900` cassette deck (`90s_playlist.mp3`, 15 chapters) |
+| `y2k` | 2000s · The Coffee House | Midnight (`#0A0C11`) & aqua/violet chrome, collage hero, holographic pass | `Y-` | `CD-2000` Discman (`12` tracks, years ≤ 2015) |
+| `cafe` | 2020s · The Café | Stone & Matcha light (`#F4F1EA` / `#3F5F2E`), hairline cards, white pass | `C-` | Turntable (`23` tracks, years > 2015) |
+
+---
+
+## Local Development & Build Commands
+
+### Run Local Dev Server (Demo Mode)
+
+From the repository root (`CHAI/`):
 
 ```powershell
-cd CHAI
 python v2/serve.py
 ```
-Open `http://localhost:8080/v2/` (landing), `http://localhost:8080/v2/order/` (ordering), and `http://localhost:8080/v2/counter/` (demo PIN **2580**) in a second tab.
-With `GAS_URL` empty in `app/app.js`, orders and payments are simulated on the device. No money moves.
 
-## After editing the source
+- Opens on `http://localhost:8080/v2/` (optional custom port: `python v2/serve.py 3000`).
+- Provides HTTP `206 Partial Content` byte-range responses for seeking inside `90s_playlist.mp3` and serves root `404.html` for missing paths.
+- With `CONFIG.GAS_URL = ''` in [`app/app.js`](app/app.js#L6), orders, simulated Razorpay checkout, autopilot queue progression, counter PIN (`2580`), and the TV board run locally via `localStorage`.
+
+### Rebuild Pages, SEO Files & Assets
+
+After modifying [`app/app.js`](app/app.js), [`app/app.css`](app/app.css), [`app/landing.js`](app/landing.js), or templates in `tools/`:
 
 ```powershell
 python v2/tools/build.py
 ```
-This rebuilds every page and SEO file and minifies `assets/` with esbuild, using `v2/node_modules/.bin/esbuild` or esbuild on your PATH. Without esbuild it copies the files unminified.
 
-## Settings to fill in (`tools/build.py`)
+- Reads the 19 `M(...)` menu entries directly from `app/app.js` so static `/v2/menu/` HTML, JSON-LD, and `llms.txt` never drift from interactive pricing.
+- Uses `v2/node_modules/.bin/esbuild` or `esbuild` on `PATH` when installed to minify into `assets/`; otherwise copies unminified files cleanly with no `.map` source maps.
 
-- **`SITE_URL`**: the public address. It defaults to the GitHub Pages URL `https://im-chandanmahapatra.github.io/CHAI-WALA/v2/`. Change it when a custom domain is connected, then rebuild.
-- **`BUSINESS`**: street address, city, PIN code, phone, opening hours, map coordinates. These are empty because they aren't known yet. Empty fields are left out of the LocalBusiness schema rather than faked. Fill them in and rebuild to get a complete Google business listing.
-- **`robots.txt`** only works at the root of a domain. Under GitHub Pages that root is `im-chandanmahapatra.github.io`, not this repo, so the file takes effect once a custom domain points here. Until then, the staff pages are kept out of search by their `noindex` tags, and you can submit `sitemap.xml` in Google Search Console.
+---
 
-## Go live (Razorpay + Apps Script)
+## Configuration (`tools/build.py` & `app/app.js`)
 
-1. Create a Google Sheet → **Extensions → Apps Script**. Paste `apps-script/Code.gs` and the manifest (`appsscript.json`).
-2. **Project Settings → Script properties**: `RZP_KEY_ID`, `RZP_KEY_SECRET`, `TOKEN_SECRET` (a long random string), `COUNTER_PIN`.
-3. Run `setup()` once. It creates the Menu, Options, Orders and Config tabs and the 5-minute reconcile trigger.
-   *If your Sheet was created before the 2000s era existed, update the `era` column in the Menu tab (`adda`, `y2k`, `cafe`) to match `MENU_SEED` in Code.gs, or delete the Menu tab and run `setup()` again.*
-4. **Deploy → New deployment → Web app** (execute as Me, access Anyone). Put the `/exec` URL in `CONFIG.GAS_URL` in `app/app.js`, then run `python v2/tools/build.py`.
-5. Host it: GitHub Pages (Settings → Pages → branch, root), then open `…/CHAI-WALA/v2/`.
+- **`SITE_URL` (`tools/build.py`):** Public canonical URL (defaults to `https://im-chandanmahapatra.github.io/CHAI-WALA/v2/`). Update when pointing canonicals/OG/sitemap to a custom domain and re-run `python v2/tools/build.py`.
+- **`BUSINESS` (`tools/build.py`):** Optional street address, city, PIN code, phone, opening hours, and geo coordinates for `CafeOrCoffeeShop` JSON-LD (blank fields are omitted rather than fabricated).
+- **`CONFIG.GAS_URL` (`app/app.js`):** Paste your deployed Google Apps Script Web App `/exec` URL to switch from Demo Mode to live Razorpay + Google Sheets, then rebuild with `python v2/tools/build.py`.
 
-Tokens are prefixed by era: **A**-001 (1900s), **Y**-001 (2000s), **C**-001 (2020s).
+---
 
-## How it stays honest without a backend
+## Deployment
 
-| Risk | What v2 does |
-|---|---|
-| Someone edits the price in the browser | `priceCart_()` recalculates every line from the Sheet. The browser total is display-only. |
-| Fake "payment successful" | HMAC-SHA256 of `order_id|payment_id`, checked with the secret in Script Properties, using the `order_id` from the Sheet. |
-| Paid, then closed the tab | The ticket is saved before checkout opens. `status` asks Razorpay directly, and a 5-minute trigger sweeps the rest. |
-| Two payments in the same second | `LockService` around the daily token counter. |
-| Screenshot shared with a friend | The QR holds `orderId.signature`. The first scan marks it COLLECTED, and later scans show "already collected". |
-| Guessing someone's order | Status needs the signed ticket, lookup needs the full mobile number, and counter actions need the PIN (8 wrong tries locks for 5 minutes). |
+### Vercel (Repo Root)
+Managed via root [`../vercel.json`](../vercel.json) and [`../.vercelignore`](../.vercelignore):
+- Set Vercel **Root Directory** to empty (`.`), **Framework Preset** to `Other`.
+- `/` redirects to `/v2/`; `trailingSlash: true` keeps relative asset links consistent across `/v2/order/`, `/v2/menu/`, `/v2/how-it-works/`, `/v2/counter/`, and `/v2/board/`.
+- `client/public/audio/` is served from the same origin root so `../client/public/audio/` resolves cleanly.
 
-## The three eras
-
-- **1900s · The Adda**: espresso and brass, a cassette deck playing the 90-minute Bollywood tape, a railway-ticket token.
-- **2000s · The Coffee House**: midnight chrome with an iridescent accent, a coffee-house collage hero, a Discman with an LCD playing 2007–2015 songs, a holographic token.
-- **2020s · The Café**: "Stone & Matcha": warm stone, hairline cards and a matcha-green accent, a turntable playing 2016-onwards songs, a clean white token pass.
-
-Song credits are shown. Lyrics are not, because they're copyrighted.
+### Live Backend (Google Apps Script + Razorpay)
+See [`apps-script/README.md`](apps-script/README.md) for the complete Sheets schema, Script Properties, `setup()` initialization, and HTTP endpoint specification.

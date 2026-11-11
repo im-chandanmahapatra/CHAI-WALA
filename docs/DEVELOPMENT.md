@@ -1,7 +1,10 @@
 # Chaiwala — Developer & Operations Guide
 
-> **Scope:** Local Development Setup, Testing Procedures, Audio Library Management, and Deployment Guide  
-> **Target Framework:** React 19 + TypeScript + Vite 6 + Tailwind CSS
+> [!NOTE]
+> This guide documents the **V1 (`client/` + `supabase/`)** React/Vite development workflow. For the active **V2** storefront, Google Apps Script backend, and Vercel root deployment, see [`../README.md`](../README.md), [`../v2/README.md`](../v2/README.md), and [`../v2/apps-script/README.md`](../v2/apps-script/README.md).
+
+> **Scope:** V1 Local Development Setup, Testing Procedures, Audio Library Management, and Deployment Guide  
+> **Target Framework (V1):** React 19 + TypeScript + Vite 6
 
 ---
 
@@ -183,13 +186,16 @@ CHAIWALA/
 
 ## 6. Deployment Guide
 
-### 6.1 Vercel Deployment
+### 6.1 Vercel Deployment (Active V2 Production vs. V1 Client)
 
-1. Connect the GitHub repository `im-chandanmahapatra/CHAI-WALA` in the Vercel dashboard.
-2. Set Root Directory to `client`.
-3. Set Framework Preset to **Vite**.
-4. Configure environment variables (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) if using live Supabase.
-5. Deploy.
+**Active V2 Production (Repository Root via `vercel.json`):**
+1. Connect `im-chandanmahapatra/CHAI-WALA` in the Vercel dashboard (Production Branch: `main`).
+2. Leave **Root Directory** empty (`.` — repository root) so both `v2/` and the shared `client/public/audio/` directory deploy together.
+3. Set **Framework Preset** to **Other** (root `vercel.json` specifies `"framework": null`, `"buildCommand": null`, `"outputDirectory": "."`, and redirects `/` → `/v2/`).
+
+**Legacy V1 Standalone Client Only (`client/`):**
+1. Set **Root Directory** to `client` and **Framework Preset** to **Vite**.
+2. Optionally configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` if deploying with live Supabase.
 
 ### 6.2 Supabase Database Migration
 

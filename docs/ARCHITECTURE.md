@@ -1,8 +1,11 @@
 # Chaiwala — System Architecture & Technical Specifications
 
+> [!NOTE]
+> This specification covers the **V1 (`client/` + `supabase/`)** architecture. For the active **V2** three-era static + Google Apps Script architecture and design system, see [`../README.md`](../README.md), [`../v2/README.md`](../v2/README.md), [`../v2/DESIGN.md`](../v2/DESIGN.md), and [`../v2/apps-script/README.md`](../v2/apps-script/README.md).
+
 > **System Name:** Chaiwala — Chai Across Generations  
-> **Architecture Scope:** Dual-Era Web Client, Audio Engine, State Domain, and Resilient Storage Contract  
-> **Tech Stack:** React 19, TypeScript 5.8, Vite 6, Tailwind CSS 3.4, HTML5 Audio / Web Audio, Supabase PostgreSQL
+> **Architecture Scope (V1):** Dual-Era Web Client, Audio Engine, State Domain, and Resilient Storage Contract  
+> **Tech Stack (V1):** React 19, TypeScript 5.7, Vite 6, HTML5 Audio / Web Audio, Supabase PostgreSQL
 
 ---
 
