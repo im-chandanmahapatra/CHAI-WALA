@@ -83,6 +83,8 @@ em{font-style:italic}
 .top .shell{display:flex;align-items:center;gap:10px}
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;margin-right:auto;min-width:0}
 .brand svg{flex:none}
+.logo-mark{color:var(--accent);width:26px;height:34px;transition:color .5s var(--ease-out)}
+.brand:hover .logo-mark{color:var(--accent-2)}
 .brand b{font:400 23px/1 var(--font-display);letter-spacing:-.02em}
 .brand small{display:block;font:500 9px/1 var(--font-mono);letter-spacing:.2em;color:var(--ink-3);margin-top:3px;text-transform:uppercase}
 .nav{display:none;gap:4px;margin-right:6px}

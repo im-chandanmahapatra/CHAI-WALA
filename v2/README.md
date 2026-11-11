@@ -30,6 +30,7 @@ v2/
 │   └── pages_landing.py      ← landing and order page templates
 ├── img/                      ← WebP photos (8.7 MB of originals → 1.1 MB)
 ├── og/                       ← 1200×630 social share images
+├── brand/                    ← logo SVGs (lockups, marks, app icon)
 ├── icons/, favicon.ico, site.webmanifest
 ├── fonts/                    ← self-hosted Geist, Geist Mono, Instrument Serif
 ├── apps-script/              ← Code.gs + appsscript.json (the backend)
@@ -37,6 +38,10 @@ v2/
 └── index.html, menu/, how-it-works/, counter/, board/, sitemap.xml, llms.txt
 ```
 Music is shared with v1 from `client/public/audio`.
+
+## Brand
+
+The logo (a ketli under a café arch) is in `v2/brand/` as SVGs: horizontal and stacked lockups on dark and light, the outline and solid marks, a one-colour version, and the app icon. Usage rules are in `DESIGN.md` → Logo.
 
 ## Run it locally (demo mode)
 

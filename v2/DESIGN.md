@@ -53,3 +53,21 @@ Spring easing (stiffness and damping compiled to CSS `linear()`). Only `transfor
 ## Imagery and icons
 - Real product photos (WebP, 800px; scenes 1800px), cropped with `object-fit: cover`, and descriptive alt text on every image.
 - Icons: one inline stroke set, 1.6 to 2px stroke and rounded caps. No emoji as icons.
+
+## Logo
+
+**The mark.** A brass ketli (the street-stall kettle) standing under a café arch with a diamond keystone. The kettle carries an engraved italic *C*. The arch is the counter you walk up to, and the kettle is what's on it. The wordmark is Instrument Serif, outlined to paths so it renders the same everywhere.
+
+| File (`v2/brand/`) | Use it for |
+|---|---|
+| `chaiwala-logo-horizontal-on-dark.svg` / `-on-light.svg` | Default lockup: mark, wordmark and "Chai across generations" |
+| `chaiwala-logo-stacked-on-dark.svg` / `-on-light.svg` | Square spaces: cups, sleeves, stickers, social avatars |
+| `chaiwala-mark.svg` | Outline arch and kettle, for large sizes (signage, print) |
+| `chaiwala-mark-solid.svg` | Filled arch with the kettle knocked out, for small sizes (below 48 px) |
+| `chaiwala-logo-one-colour.svg` | Stamps, embossing, single-ink printing |
+| `chaiwala-app-icon.svg` | Favicon, home-screen and app icons (also `v2/icons/favicon.svg`) |
+
+- **Colour.** Brass `#D4A657` on espresso `#0E0A07` is the master. Cream `#F3E7D3` is used on dark photos. On the site, the header mark uses `currentColor` and takes each era's `--accent` (brass, chrome cyan or matcha).
+- **Clear space.** Leave at least the keystone-to-arch-top height (about ⅛ of the mark's height) on every side.
+- **Minimum size.** Solid mark: 16 px tall. Outline mark: 48 px. Horizontal lockup: 120 px wide. Below that, drop the tagline.
+- **Don't** stretch it, recolour it outside the palette, add a shadow, glow or gradient, set the wordmark in another font, or put the outline mark on a busy photo. Use the solid mark there instead.

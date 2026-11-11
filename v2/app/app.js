@@ -294,6 +294,8 @@ const I = {
   upi: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 6h4M9.5 14l2 2 3.5-4"/></svg>',
   ticket: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg>',
 };
+/* Brand mark: the kettle under the café arch (kettle knocked out, so it takes the era's accent colour). */
+const LOGO = `<svg viewBox="34 22 132 172" class="logo-mark" width="26" height="34" aria-hidden="true" focusable="false"><defs><mask id="cwlogo" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><rect width="200" height="200" fill="#fff"/><g transform="translate(42.9,55.2) scale(0.7)"><g> <path d="M71 92 C60 26 140 26 129 92" fill="none" stroke="#000" stroke-width="8.5" stroke-linecap="round"/> <path d="M77 82 C81 69 119 69 123 82 Z" fill="#000"/><rect x="97" y="56" width="6" height="14" rx="3" fill="#000"/><circle cx="100" cy="55" r="6.5" fill="#000"/> <path d="M77 82 C70 98 56 110 56 129 C56 151 76 163 100 163 C124 163 144 151 144 129 C144 110 130 98 123 82 Z" fill="#000"/> <path d="M75 161 H125 L121 170 H79 Z" fill="#000"/> <path d="M63 138 C45 136 35 120 25 98 C23 94 19 92 13 92 L13 86 C22 85 29 89 33 96 C41 112 49 120 65 122 Z" fill="#000"/> <path d="M66 104 C85 98 115 98 134 104" fill="none" stroke="#000" stroke-width="2.2"/> <path d="M102.2 148.6Q95.4 148.6 92.4 144.3Q89.3 140.0 89.3 131.9Q89.3 128 90.3 123.7Q91.2 119.5 93.1 115.5Q94.9 111.5 97.4 108.3Q100 105.1 103.2 103.2Q106.5 101.3 110.2 101.3Q114.7 101.3 118.4 104.3Q119 104.8 118.8 105.7L116.9 115.4Q116.7 116.4 115.9 116.4Q115.2 116.4 115.2 115.4L115.1 112.9Q115 107.6 113.6 105.3Q112.2 103.1 109.5 103.1Q107 103.1 104.7 105.1Q102.4 107.1 100.5 110.5Q98.5 113.8 97 117.9Q95.5 122 94.6 126Q93.8 130.1 93.8 133.7Q93.8 139.4 95.6 143.1Q97.3 146.7 101.4 146.7Q103.8 146.7 105.7 145Q107.6 143.2 109.6 138.9L111 135.9Q111.3 135.1 112 135.1Q113.0 135.1 112.7 136.4L110.1 146.3Q109.9 147.3 109.1 147.5Q108 147.9 106 148.2Q103.9 148.6 102.2 148.6Z" fill="#000"/> </g></g></mask></defs><path d="M40 190 V88 A60 60 0 0 1 160 88 V190 Z" fill="currentColor" mask="url(#cwlogo)"/></svg>`;
 const cupSVG = (fill = 0, size = 30) => `
 <svg class="cupsvg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true">
   <defs><clipPath id="cupclip${size}"><path d="M8 11h22l-2.6 21.5a3 3 0 0 1-3 2.5h-10.8a3 3 0 0 1-3-2.5z"/></clipPath></defs>
@@ -328,7 +330,7 @@ function renderHome() {
   $('#app').innerHTML = `
   <header class="top" id="top"><div class="shell">
     <a class="brand" href="${href('./')}" aria-label="Chaiwala home">
-      ${cupSVG(.55, 30)}
+      ${LOGO}
       <span><b>Chaiwala</b><small>Chai across generations</small></span>
     </a>
     <nav class="nav" aria-label="Main"><a href="${href('order/')}" aria-current="page">Order</a><a href="${href('menu/')}">Menu</a><a href="${href('how-it-works/')}">How it works</a></nav>
@@ -1249,7 +1251,7 @@ function renderCounter() {
   $('#app').innerHTML = `<div class="staff">
     <div class="staff-top"><div class="shell">
       <h1 class="sr-only">Counter mode</h1>
-      <a class="brand" href="${href('./')}" aria-label="Chaiwala home">${cupSVG(.6, 28)}<span><b>Counter</b><small>${DEMO ? 'demo · pin ' + CONFIG.DEMO_PIN : 'live'}</small></span></a>
+      <a class="brand" href="${href('./')}" aria-label="Chaiwala home">${LOGO}<span><b>Counter</b><small>${DEMO ? 'demo · pin ' + CONFIG.DEMO_PIN : 'live'}</small></span></a>
       <button class="btn btn-primary btn-sm" data-s="scan">${I.scan} Scan</button>
       <a class="icon-btn" href="${href('board/')}" target="_blank" rel="noopener" aria-label="Open the now-serving TV board">${I.tv}</a>
       <button class="icon-btn" data-s="lock" aria-label="Lock">${I.lock}</button>
