@@ -58,7 +58,7 @@ ARROW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="cur
 ERA_BOOT = "<script>try{var e=JSON.parse(localStorage.getItem('cw2.era'));if(['adda','y2k','cafe'].indexOf(e)>-1)document.documentElement.dataset.era=e}catch(_){}</script>"
 
 
-def head(rel, path, title, desc, og, og_alt, noindex=False, ld=()):
+def head(rel, path, title, desc, og, og_alt, noindex=False, ld=(), boot=True):
     canonical = abs_url(path)
     tags = [
         '<meta charset="utf-8">',
@@ -91,7 +91,7 @@ def head(rel, path, title, desc, og, og_alt, noindex=False, ld=()):
         f'<link rel="preload" href="{rel}fonts/jizBRFtNs2ka5fXjeivQ4LroWlx-6zUTjg.woff2" as="font" type="font/woff2" crossorigin>',
         f'<link rel="stylesheet" href="{rel}fonts/fonts.css">',
         f'<link rel="stylesheet" href="{rel}assets/app.css">',
-        ERA_BOOT,
+        ERA_BOOT if boot else '',
     ]
     for block in ld:
         tags.append('<script type="application/ld+json">' + json.dumps(block, ensure_ascii=False, separators=(",", ":")) + "</script>")
@@ -112,16 +112,16 @@ def crumbs_html(rel, items):
 
 
 def static_header(rel, current):
-    links = [("menu/", "Menu"), ("how-it-works/", "How it works")]
+    links = [("order/", "Order"), ("menu/", "Menu"), ("how-it-works/", "How it works")]
     nav = "".join(f'<a href="{rel}{p}"{" aria-current=\"page\"" if p == current else ""}>{t}</a>' for p, t in links)
     return (f'<header class="top" id="top"><div class="shell"><a class="brand" href="{rel}" aria-label="Chaiwala home">{CUP}'
             f'<span><b>Chaiwala</b><small>Chai across generations</small></span></a>'
-            f'<nav class="nav" aria-label="Main">{nav}</nav><a class="btn btn-primary btn-sm" href="{rel}#menu">Order now {ARROW}</a></div></header>')
+            f'<nav class="nav" aria-label="Main">{nav}</nav><a class="btn btn-primary btn-sm cta-sm" href="{rel}order/">Start an order {ARROW}</a></div></header>')
 
 
 def site_footer(rel):
     return (f'<footer class="site-foot"><div class="shell"><nav aria-label="Footer">'
-            f'<a href="{rel}">Order</a><a href="{rel}menu/">Menu</a><a href="{rel}how-it-works/">How it works</a>'
+            f'<a href="{rel}">Home</a><a href="{rel}order/">Order</a><a href="{rel}menu/">Menu</a><a href="{rel}how-it-works/">How it works</a>'
             f'<a href="{rel}counter/">Staff · counter mode</a><a href="{rel}board/">Now-serving board</a></nav>'
             f'<p>Chaiwala, chai across generations. Payments are processed by Razorpay.</p></div></footer>')
 
@@ -154,19 +154,6 @@ def write(rel_path, text):
 
 
 # ---------------------------------------------------------------- pages
-def page_home(menu):
-    title = "Chaiwala | Order chai, pay by UPI, pick up with a token"
-    desc = "Order masala chai, cold coffee or matcha in 30 seconds. Pay with UPI through Razorpay and collect at the counter with a QR token. No login, no queue."
-    website = {"@context": "https://schema.org", "@type": "WebSite", "@id": SITE_URL + "#site", "name": SITE_NAME, "url": SITE_URL,
-               "inLanguage": "en-IN", "publisher": {"@id": SITE_URL + "#cafe"}}
-    fallback = (f'{static_header("", "")}<main class="shell"><section class="page-hero"><span class="eyebrow">Chapter I · The 1900s</span>'
-                f'<h1>Chai across <em>generations.</em></h1><p>Order from three eras of menu, pay with UPI and collect with a token. '
-                f'<a href="menu/">See the full menu</a> or read <a href="how-it-works/">how token ordering works</a>.</p></section></main>')
-    body = (f'<body data-page="home">\n<a class="sr-only" href="#menu">Skip to menu</a>\n<div id="app">{fallback}</div>\n'
-            f'<div class="toasts" id="toasts" aria-live="polite"></div>\n<script src="assets/app.js" defer></script>\n</body>\n</html>\n')
-    write("index.html", head("", "", title, desc, "home.jpg", "Chaiwala: three eras of chai and coffee, ordered online and collected with a token", ld=[website, business_ld(menu)]) + body)
-
-
 def page_menu(menu):
     title = "Menu: chai, coffee and bites from three eras | Chaiwala"
     desc = "The full Chaiwala menu with prices: 1900s adda chai and bun maska, 2000s cold coffee and brownies, 2020s matcha, cold brew and boba."
@@ -183,7 +170,7 @@ def page_menu(menu):
             lis = "".join(
                 f'<li class="mitem"><img src="../img/{m["image"]}" alt="{esc(m["alt"])}" width="88" height="88" loading="lazy" decoding="async">'
                 f'<div><h4>{esc(m["name"])}</h4><p>{esc(m["blurb"])}</p><div class="row"><span class="price-tag">₹{m["price"]}</span>'
-                f'<a class="btn btn-primary btn-sm" href="../?add={m["id"]}" aria-label="Order {esc(m["name"])}, ₹{m["price"]}">Order</a></div></div></li>'
+                f'<a class="btn btn-primary btn-sm" href="../order/?add={m["id"]}" aria-label="Order {esc(m["name"])}, ₹{m["price"]}">Order</a></div></div></li>'
                 for m in lst)
             blocks.append("")
             cats_html = f'<h3>{CATS[c]}</h3><ul class="mlist">{lis}</ul>'
@@ -191,7 +178,7 @@ def page_menu(menu):
         sections.append({"@type": "MenuSection", "name": f"{year}: {name}", "description": blurb, "hasMenuSection": [{k: v for k, v in c.items() if k != "_html"} for c in cats]})
         blocks[-1] = (f'<section class="era-block" id="{key}" aria-labelledby="h-{key}"><header><div><span class="eyebrow">{year}</span>'
                       f'<h2 id="h-{key}">{ERA_TITLE_EM[key]}</h2><p class="dim" style="margin:8px 0 0">{esc(blurb)}</p></div>'
-                      f'<a class="btn btn-ghost btn-sm" href="../">Order from the {year}</a></header>{"".join(c["_html"] for c in cats)}</section>')
+                      f'<a class="btn btn-ghost btn-sm" href="../order/?era={key}">Order from the {year}</a></header>{"".join(c["_html"] for c in cats)}</section>')
     menu_ld = {"@context": "https://schema.org", "@type": "Menu", "@id": abs_url("menu/") + "#menu", "name": "Chaiwala menu", "url": abs_url("menu/"),
                "inLanguage": "en-IN", "hasMenuSection": sections}
     jump = " · ".join(f'<a href="#{k}">{y} · {n}</a>' for k, y, n, _ in ERAS)
@@ -199,7 +186,7 @@ def page_menu(menu):
             f'<section class="page-hero"><span class="eyebrow">Prices in rupees · tax included</span><h1>The <em>menu</em></h1>'
             f'<p>Three eras, one counter. Every item can be ordered online and collected with a token. Jump to {jump}.</p></section>'
             f'{"".join(blocks)}'
-            f'<div class="cta-band"><b>Ready to order?</b><a class="btn btn-primary" href="../#menu">Start your order {ARROW}</a></div>'
+            f'<div class="cta-band"><b>Ready to order?</b><a class="btn btn-primary" href="../order/">Start your order {ARROW}</a></div>'
             f'<p class="dim" style="margin-top:18px">New to token ordering? Read <a href="../how-it-works/">how it works</a>.</p></main>\n'
             f'{site_footer("../")}\n</body>\n</html>\n')
     write("menu/index.html", head("../", "menu/", title, desc, "menu.jpg", "Chaiwala menu: masala chai, cold coffee and matcha from three eras",
@@ -233,7 +220,7 @@ def page_how(menu):
             f'<div class="prose"><h2>Why the price is always right</h2><p>The amount you pay is calculated by the counter from its own price list, not by your phone. '
             f'If an item sells out while you are ordering, you are told before any money moves.</p>'
             f'<h2>Questions</h2></div><div class="faq">{faq_html}</div>'
-            f'<div class="cta-band"><b>See it for yourself.</b><a class="btn btn-primary" href="../#menu">Start an order {ARROW}</a></div></main>\n'
+            f'<div class="cta-band"><b>See it for yourself.</b><a class="btn btn-primary" href="../order/">Start an order {ARROW}</a></div></main>\n'
             f'{site_footer("../")}\n</body>\n</html>\n')
     write("how-it-works/index.html", head("../", "how-it-works/", title, desc, "how-it-works.jpg", "A Chaiwala token pass with a QR code and the code A-042",
                                           ld=[faq_ld, crumbs_ld(items)]) + body)
@@ -260,14 +247,14 @@ def page_404():
            f'<script>{base_js}</script>\n</head>\n'
            f'<body>\n<main class="nf"><div><div class="code" aria-hidden="true">404</div><h1>This cup is empty.</h1>'
            f'<p>The page you were looking for does not exist or has moved. Your order and any saved token are safe.</p>'
-           f'<div class="row"><a class="btn btn-primary" data-to="" href="{SITE_URL}">Back to ordering</a>'
+           f'<div class="row"><a class="btn btn-primary" data-to="order/" href="{SITE_URL}order/">Start an order</a><a class="btn btn-ghost" data-to="" href="{SITE_URL}">Home</a>'
            f'<a class="btn btn-ghost" data-to="menu/" href="{SITE_URL}menu/">See the menu</a>'
-           f'<a class="btn btn-ghost" data-to="how-it-works/" href="{SITE_URL}how-it-works/">How it works</a></div></div></main>\n</body>\n</html>\n')
+           f'</div></div></main>\n</body>\n</html>\n')
     write("/404.html", doc)
 
 
 def seo_files(menu):
-    urls = [("", "1.0"), ("menu/", "0.9"), ("how-it-works/", "0.6")]
+    urls = [("", "1.0"), ("order/", "0.9"), ("menu/", "0.9"), ("how-it-works/", "0.6")]
     sm = ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
           "".join(f"  <url><loc>{abs_url(u)}</loc><lastmod>{TODAY}</lastmod><priority>{p}</priority></url>\n" for u, p in urls) + "</urlset>\n")
     write("sitemap.xml", sm)
@@ -275,7 +262,8 @@ def seo_files(menu):
     write("/robots.txt", "User-agent: *\nAllow: /\nDisallow: /v2/counter/\nDisallow: /v2/board/\n\nSitemap: " + abs_url("sitemap.xml") + "\n")
     lines = [f"# {SITE_NAME}", "", "> A three-era chai and coffee counter in India. Customers order online without an account, pay with UPI, cards or wallets through Razorpay, "
              "and collect their order at the counter by showing a single-use QR token.", "",
-             "## Pages", "", f"- [Order]({SITE_URL}): the ordering page with the live menu, order summary and token pass",
+             "## Pages", "", f"- [Home]({SITE_URL}): what Chaiwala is, the three eras, how ordering works, signature dishes",
+             f"- [Order]({abs_url('order/')}): the ordering page with the live menu, order summary and token pass",
              f"- [Menu]({abs_url('menu/')}): every item with prices in rupees, grouped by era",
              f"- [How it works]({abs_url('how-it-works/')}): the ordering, payment and token process, with FAQs", "", "## Menu", ""]
     for key, year, name, _ in ERAS:
@@ -298,7 +286,7 @@ def bundle():
     os.makedirs(os.path.join(V2, "assets"), exist_ok=True)
     cands = [os.path.join(V2, "node_modules", ".bin", "esbuild.cmd"), os.path.join(V2, "node_modules", ".bin", "esbuild"), shutil.which("esbuild")]
     esb = next((c for c in cands if c and os.path.exists(c)), None)
-    for name in ("app.js", "app.css"):
+    for name in ("app.js", "app.css", "landing.js"):
         src, out = os.path.join(V2, "app", name), os.path.join(V2, "assets", name)
         if esb:
             subprocess.run([esb, src, "--minify", "--legal-comments=none", "--target=es2020,chrome100,safari15", f"--outfile={out}", "--log-level=warning"], check=True)
@@ -311,10 +299,13 @@ def bundle():
 
 
 if __name__ == "__main__":
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    sys.modules.setdefault("build", sys.modules["__main__"])
     menu = read_menu()
     print(f"Chaiwala build · {len(menu)} menu items · {SITE_URL}")
     bundle()
-    page_home(menu); page_menu(menu); page_how(menu)
+    from pages_landing import page_landing, page_order  # noqa: E402 (imports this module's helpers)
+    page_landing(menu); page_order(menu); page_menu(menu); page_how(menu)
     page_staff("counter", "counter", "Counter mode | Chaiwala staff", "Staff counter for Chaiwala: queue, status updates and QR token scanning.")
     page_staff("board", "board", "Now serving | Chaiwala", "Chaiwala now-serving board for the shop TV.")
     page_404(); seo_files(menu)

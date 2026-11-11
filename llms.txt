@@ -4,7 +4,8 @@
 
 ## Pages
 
-- [Order](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/): the ordering page with the live menu, order summary and token pass
+- [Home](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/): what Chaiwala is, the three eras, how ordering works, signature dishes
+- [Order](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/order/): the ordering page with the live menu, order summary and token pass
 - [Menu](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/menu/): every item with prices in rupees, grouped by era
 - [How it works](https://im-chandanmahapatra.github.io/CHAI-WALA/v2/how-it-works/): the ordering, payment and token process, with FAQs
 
