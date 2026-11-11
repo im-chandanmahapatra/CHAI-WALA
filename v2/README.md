@@ -7,7 +7,8 @@ No login, no cart page, no server to run: Google Apps Script plus a Google Sheet
 
 | URL | What it is | Indexed |
 |---|---|---|
-| `/v2/` | Ordering app: hero, pairs, sound system, live menu, order sheet, token pass | yes |
+| `/v2/` | Landing page: era fan, scroll-expanding story, the three eras, how it works, signatures, soundtrack, FAQ | yes |
+| `/v2/order/` | Ordering app: era banner, signatures, pairs, sound system, live menu, order sheet, token pass (`?era=adda\|y2k\|cafe`, `?add=<item>`) | yes |
 | `/v2/menu/` | Full menu with prices, all three eras (static HTML) | yes |
 | `/v2/how-it-works/` | How token ordering works, plus FAQs | yes |
 | `/v2/counter/` | Staff counter: PIN, queue, QR scanner | no (noindex) |
@@ -22,11 +23,14 @@ Also generated: `sitemap.xml`, `/robots.txt`, `llms.txt`, `site.webmanifest`, an
 
 ```
 v2/
-├── app/app.js, app/app.css   ← SOURCE: edit these
+├── app/app.js, app/app.css, app/landing.js   ← SOURCE: edit these
+├── DESIGN.md                 ← colours, type, spacing and components for all three eras
 ├── assets/                   ← built: minified app.js / app.css (no source maps)
 ├── tools/build.py            ← regenerates every page + SEO files from the source
+│   └── pages_landing.py      ← landing and order page templates
 ├── img/                      ← WebP photos (8.7 MB of originals → 1.1 MB)
 ├── og/                       ← 1200×630 social share images
+├── brand/                    ← logo SVGs (lockups, marks, app icon)
 ├── icons/, favicon.ico, site.webmanifest
 ├── fonts/                    ← self-hosted Geist, Geist Mono, Instrument Serif
 ├── apps-script/              ← Code.gs + appsscript.json (the backend)
@@ -35,13 +39,17 @@ v2/
 ```
 Music is shared with v1 from `client/public/audio`.
 
+## Brand
+
+The logo (a ketli under a café arch) is in `v2/brand/` as SVGs: horizontal and stacked lockups on dark and light, the outline and solid marks, a one-colour version, and the app icon. Usage rules are in `DESIGN.md` → Logo.
+
 ## Run it locally (demo mode)
 
 ```powershell
 cd CHAI
 python v2/serve.py
 ```
-Open `http://localhost:8080/v2/`, and `http://localhost:8080/v2/counter/` (demo PIN **2580**) in a second tab.
+Open `http://localhost:8080/v2/` (landing), `http://localhost:8080/v2/order/` (ordering), and `http://localhost:8080/v2/counter/` (demo PIN **2580**) in a second tab.
 With `GAS_URL` empty in `app/app.js`, orders and payments are simulated on the device. No money moves.
 
 ## After editing the source
@@ -83,6 +91,6 @@ Tokens are prefixed by era: **A**-001 (1900s), **Y**-001 (2000s), **C**-001 (202
 
 - **1900s · The Adda**: espresso and brass, a cassette deck playing the 90-minute Bollywood tape, a railway-ticket token.
 - **2000s · The Coffee House**: midnight chrome with an iridescent accent, a coffee-house collage hero, a Discman with an LCD playing 2007–2015 songs, a holographic token.
-- **2020s · The Café**: bone and indigo, a turntable playing 2016-onwards songs, a frosted-glass token.
+- **2020s · The Café**: "Stone & Matcha": warm stone, hairline cards and a matcha-green accent, a turntable playing 2016-onwards songs, a clean white token pass.
 
 Song credits are shown. Lyrics are not, because they're copyrighted.

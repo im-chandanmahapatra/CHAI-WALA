@@ -8,7 +8,7 @@ const CONFIG = {
 };
 /* v2/assets/app.js → ROOT = v2/. Photos live in v2/img, music is shared with v1. */
 const ROOT = new URL('../', document.currentScript ? document.currentScript.src : location.href);
-const PAGE = document.body.dataset.page || 'home';
+const PAGE = document.body.dataset.page || 'order';
 const href = p => new URL(p, ROOT).href;
 const DEMO = !CONFIG.GAS_URL;
 
@@ -294,6 +294,8 @@ const I = {
   upi: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 6h4M9.5 14l2 2 3.5-4"/></svg>',
   ticket: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z"/><path d="M14 6v12" stroke-dasharray="2 2"/></svg>',
 };
+/* Brand mark: the kettle under the café arch (kettle knocked out, so it takes the era's accent colour). */
+const LOGO = `<svg viewBox="34 22 132 172" class="logo-mark" width="26" height="34" aria-hidden="true" focusable="false"><defs><mask id="cwlogo" maskUnits="userSpaceOnUse" x="0" y="0" width="200" height="200"><rect width="200" height="200" fill="#fff"/><g transform="translate(42.9,55.2) scale(0.7)"><g> <path d="M71 92 C60 26 140 26 129 92" fill="none" stroke="#000" stroke-width="8.5" stroke-linecap="round"/> <path d="M77 82 C81 69 119 69 123 82 Z" fill="#000"/><rect x="97" y="56" width="6" height="14" rx="3" fill="#000"/><circle cx="100" cy="55" r="6.5" fill="#000"/> <path d="M77 82 C70 98 56 110 56 129 C56 151 76 163 100 163 C124 163 144 151 144 129 C144 110 130 98 123 82 Z" fill="#000"/> <path d="M75 161 H125 L121 170 H79 Z" fill="#000"/> <path d="M63 138 C45 136 35 120 25 98 C23 94 19 92 13 92 L13 86 C22 85 29 89 33 96 C41 112 49 120 65 122 Z" fill="#000"/> <path d="M66 104 C85 98 115 98 134 104" fill="none" stroke="#000" stroke-width="2.2"/> <path d="M102.2 148.6Q95.4 148.6 92.4 144.3Q89.3 140.0 89.3 131.9Q89.3 128 90.3 123.7Q91.2 119.5 93.1 115.5Q94.9 111.5 97.4 108.3Q100 105.1 103.2 103.2Q106.5 101.3 110.2 101.3Q114.7 101.3 118.4 104.3Q119 104.8 118.8 105.7L116.9 115.4Q116.7 116.4 115.9 116.4Q115.2 116.4 115.2 115.4L115.1 112.9Q115 107.6 113.6 105.3Q112.2 103.1 109.5 103.1Q107 103.1 104.7 105.1Q102.4 107.1 100.5 110.5Q98.5 113.8 97 117.9Q95.5 122 94.6 126Q93.8 130.1 93.8 133.7Q93.8 139.4 95.6 143.1Q97.3 146.7 101.4 146.7Q103.8 146.7 105.7 145Q107.6 143.2 109.6 138.9L111 135.9Q111.3 135.1 112 135.1Q113.0 135.1 112.7 136.4L110.1 146.3Q109.9 147.3 109.1 147.5Q108 147.9 106 148.2Q103.9 148.6 102.2 148.6Z" fill="#000"/> </g></g></mask></defs><path d="M40 190 V88 A60 60 0 0 1 160 88 V190 Z" fill="currentColor" mask="url(#cwlogo)"/></svg>`;
 const cupSVG = (fill = 0, size = 30) => `
 <svg class="cupsvg" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true">
   <defs><clipPath id="cupclip${size}"><path d="M8 11h22l-2.6 21.5a3 3 0 0 1-3 2.5h-10.8a3 3 0 0 1-3-2.5z"/></clipPath></defs>
@@ -309,7 +311,7 @@ const cupSVG = (fill = 0, size = 30) => `
 function route() {
   stopStaff();
   // old #counter / #board links from v2.0 → the real pages
-  if (PAGE === 'home' && (location.hash === '#counter' || location.hash === '#board')) { location.replace(href(location.hash.slice(1) + '/')); return; }
+  if (PAGE === 'order' && (location.hash === '#counter' || location.hash === '#board')) { location.replace(href(location.hash.slice(1) + '/')); return; }
   document.documentElement.dataset.era = S.era;
   if (PAGE === 'counter') return renderCounter();
   if (PAGE === 'board') return renderBoard();
@@ -328,10 +330,10 @@ function renderHome() {
   $('#app').innerHTML = `
   <header class="top" id="top"><div class="shell">
     <a class="brand" href="${href('./')}" aria-label="Chaiwala home">
-      ${cupSVG(.55, 30)}
+      ${LOGO}
       <span><b>Chaiwala</b><small>Chai across generations</small></span>
     </a>
-    <nav class="nav" aria-label="Main"><a href="${href('menu/')}">Menu</a><a href="${href('how-it-works/')}">How it works</a></nav>
+    <nav class="nav" aria-label="Main"><a href="${href('order/')}" aria-current="page">Order</a><a href="${href('menu/')}">Menu</a><a href="${href('how-it-works/')}">How it works</a></nav>
     <div class="seg" role="group" aria-label="Choose an era">
       <span class="pill"></span>
       ${ERA_KEYS.map(k => `<button data-act="era" data-era="${k}" aria-pressed="${S.era === k}">${ERA[k].year}</button>`).join('')}
@@ -341,33 +343,27 @@ function renderHome() {
   <button class="live-chip" id="liveChip" data-act="open-token"></button>
 
   <main>
-    <section class="hero" aria-label="Featured">
-      <div class="story" id="story">${[0, ...E.featured].map(() => '<i><b></b></i>').join('')}</div>
-      <div class="rail" id="heroRail">
-        <article class="slide ${E.scene === 'collage' ? 'collage' : ''}">
-          <div class="media">${E.scene === 'collage' ? collageHTML() : `<img src="${img(E.scene + '.webp')}" srcset="${img(E.scene + '-sm.webp')} 900w, ${img(E.scene + '.webp')} 1800w" sizes="(min-width: 900px) 1150px, 100vw" alt="${esc(E.sceneAlt)}" fetchpriority="high" width="1800" height="1005">`}</div>
-          <div class="body">
-            <span class="chip">${E.chapter}</span>
-            <h1>${E.title}</h1>
-            <p>${E.sub}</p>
-            <div class="row">
-              <a class="btn btn-primary" href="#menu" data-act="to-menu">Order in 30 seconds ${I.arrow}</a>
-              ${DEMO ? '<span class="chip">Demo mode</span>' : ''}
-            </div>
-          </div>
-        </article>
+    <section class="era-banner" aria-labelledby="eraTitle">
+      <div class="shell eb-grid">
+        <div class="eb-copy">
+          <span class="eyebrow">${E.chapter}</span>
+          <h1 id="eraTitle">${E.title}</h1>
+          <p>${E.sub}</p>
+          <div class="eb-eras" role="group" aria-label="Switch era">${ERA_KEYS.map(k => `<button class="eb-era ${k === S.era ? 'on' : ''}" data-act="era" data-era="${k}" aria-pressed="${k === S.era}"><b>${ERA[k].year}</b><span>${ERA[k].name}</span></button>`).join('')}</div>
+        </div>
+        <div class="eb-media ${E.scene === 'collage' ? 'collage' : ''}">${E.scene === 'collage' ? collageHTML() : `<img src="${img(E.scene + '-sm.webp')}" srcset="${img(E.scene + '-sm.webp')} 900w, ${img(E.scene + '.webp')} 1800w" sizes="(min-width: 900px) 560px, 100vw" alt="${esc(E.sceneAlt)}" fetchpriority="high" width="900" height="503">`}
+          ${DEMO ? '<span class="eb-tag">Demo mode · no real payments</span>' : ''}</div>
+      </div>
+      <div class="shell"><div class="sec-head feat-head"><div><span class="eyebrow">Signatures</span><h2>Start with <em>these</em></h2></div>
+        <div class="arrows"><button class="icon-btn" data-act="rail" data-rail="featRail" data-dir="-1" aria-label="Previous signatures">${I.left}</button><button class="icon-btn" data-act="rail" data-rail="featRail" data-dir="1" aria-label="Next signatures">${I.right}</button></div></div></div>
+      <div class="rail feat-rail" id="featRail">
         ${E.featured.map(id => { const m = byId(id); return `
-        <article class="slide" aria-label="${esc(m.name)}">
-          <div class="media"><img src="${img(m.image)}" alt="${esc(m.alt)}" loading="lazy" decoding="async" width="800" height="1000"></div>
-          <div class="body">
-            <span class="chip">Signature · ${CATS[m.category]}</span>
-            <h2>${esc(m.name.split(' ').slice(0, -1).join(' ') || m.name)} <em>${esc(m.name.split(' ').slice(-1)[0])}</em></h2>
-            <p>${esc(m.blurb)}</p>
-            <div class="row">
-              <button class="btn btn-primary" data-act="quick" data-id="${m.id}" ${m.available ? '' : 'disabled'}>${m.available ? 'Add · ' + rupees(m.pricePaise) : 'Sold out'}</button>
-              ${m.options.length ? `<button class="btn btn-glass" data-act="customize" data-id="${m.id}">Customize</button>` : ''}
-            </div>
-          </div>
+        <article class="feat" aria-label="${esc(m.name)}">
+          <div class="feat-img"><img src="${img(m.image)}" alt="${esc(m.alt)}" loading="lazy" decoding="async" width="800" height="1000"></div>
+          <div class="feat-body"><h3>${esc(m.name)}</h3><p>${esc(m.blurb)}</p>
+            <div class="feat-row"><span class="price-tag">${rupees(m.pricePaise)}</span>
+              <span class="feat-btns">${m.options.length ? `<button class="btn btn-ghost btn-sm" data-act="customize" data-id="${m.id}">Customize</button>` : ''}
+              <button class="btn btn-primary btn-sm" data-act="quick" data-id="${m.id}" ${m.available ? '' : 'disabled'} aria-label="Add ${esc(m.name)}">${m.available ? 'Add' : 'Sold out'}</button></span></div></div>
         </article>`; }).join('')}
       </div>
     </section>
@@ -444,6 +440,7 @@ function renderHome() {
   <footer><div class="shell">
     <div class="row">
       <button class="link" data-act="lookup">Find my token</button>
+      <a href="${href('./')}">Home</a>
       <a href="${href('menu/')}">Full menu</a>
       <a href="${href('how-it-works/')}">How it works</a>
       <a href="${href('counter/')}">Staff · counter mode</a>
@@ -470,7 +467,7 @@ function renderHome() {
   <div class="token-view" id="tokenView" role="dialog" aria-modal="true" aria-label="Your token"></div>`;
 
   updateDock(false);
-  initHero(); initCoverflow('pairRail', 'pairDots'); initTabs(); initSheetDrag(); initHeader();
+  initCoverflow('pairRail', 'pairDots'); initTabs(); initSheetDrag(); initHeader();
   updateLiveChip();
   Radio.mount();
 }
@@ -512,48 +509,6 @@ function initHeader() {
   const top = $('#top');
   const on = () => top.classList.toggle('scrolled', scrollY > 8);
   addEventListener('scroll', on, { passive: true }); on();
-}
-
-/* ---------- hero: story carousel with parallax ---------- */
-let heroTimer = null;
-function initHero() {
-  const rail = $('#heroRail'), story = $('#story'); if (!rail) return;
-  const slides = $$('.slide', rail), bars = $$('i', story);
-  let idx = 0, paused = false, raf = 0;
-  const DUR = 6000;
-  const paint = () => {
-    raf = 0;
-    const c = rail.scrollLeft + rail.clientWidth / 2;
-    slides.forEach(s => {
-      const off = (s.offsetLeft + s.offsetWidth / 2 - c) / s.offsetWidth;   // -1 … 1
-      const a = Math.min(Math.abs(off), 1);
-      const m = s.firstElementChild;
-      m.style.transform = `translate3d(${off * -14}%,0,0)`;
-      s.style.transform = `scale(${1 - a * 0.05})`;
-      s.style.opacity = 1 - a * 0.35;
-      s.lastElementChild.style.opacity = Math.max(0, 1 - a * 2.2);   // only the centred slide shows its copy
-    });
-    const n = Math.round(rail.scrollLeft / (slides[1] ? slides[1].offsetLeft - slides[0].offsetLeft : 1));
-    if (n !== idx) { idx = Math.max(0, Math.min(slides.length - 1, n)); setBars(); }
-  };
-  const setBars = () => {
-    bars.forEach((b, i) => { b.className = i < idx ? 'done' : i === idx ? '' : ''; });
-    void story.offsetWidth; bars[idx] && (bars[idx].className = 'run');
-    clearTimeout(heroTimer);
-    if (!RM) heroTimer = setTimeout(next, DUR);
-  };
-  const next = () => {
-    if (paused || document.hidden || !document.body.contains(rail)) { heroTimer = setTimeout(next, 1200); return; }
-    const to = (idx + 1) % slides.length;
-    rail.scrollTo({ left: slides[to].offsetLeft - slides[0].offsetLeft, behavior: RM ? 'auto' : 'smooth' });
-  };
-  story.style.setProperty('--story', DUR + 'ms');
-  rail.addEventListener('scroll', () => { raf ||= requestAnimationFrame(paint); }, { passive: true });
-  const pause = v => { paused = v; story.classList.toggle('paused', v); };
-  rail.addEventListener('pointerdown', () => pause(true));
-  addEventListener('pointerup', () => pause(false));
-  rail.addEventListener('mouseenter', () => pause(true)); rail.addEventListener('mouseleave', () => pause(false));
-  paint(); setBars();
 }
 
 /* ---------- coverflow rail ---------- */
@@ -996,7 +951,7 @@ function chime() {
   });
 }
 async function poll() {
-  if (PAGE !== 'home') return;
+  if (PAGE !== 'order') return;
   if (DEMO) Demo.autopilot();
   const active = S.tickets.filter(t => !['COLLECTED'].includes(S.last[t.ticket]));
   for (const t of active.slice(0, 3)) {
@@ -1296,7 +1251,7 @@ function renderCounter() {
   $('#app').innerHTML = `<div class="staff">
     <div class="staff-top"><div class="shell">
       <h1 class="sr-only">Counter mode</h1>
-      <a class="brand" href="${href('./')}" aria-label="Chaiwala home">${cupSVG(.6, 28)}<span><b>Counter</b><small>${DEMO ? 'demo · pin ' + CONFIG.DEMO_PIN : 'live'}</small></span></a>
+      <a class="brand" href="${href('./')}" aria-label="Chaiwala home">${LOGO}<span><b>Counter</b><small>${DEMO ? 'demo · pin ' + CONFIG.DEMO_PIN : 'live'}</small></span></a>
       <button class="btn btn-primary btn-sm" data-s="scan">${I.scan} Scan</button>
       <a class="icon-btn" href="${href('board/')}" target="_blank" rel="noopener" aria-label="Open the now-serving TV board">${I.tv}</a>
       <button class="icon-btn" data-s="lock" aria-label="Lock">${I.lock}</button>
@@ -1312,7 +1267,7 @@ function renderPin() {
     <span class="eyebrow">Staff only</span><h1>Counter mode</h1><p class="dim">${DEMO ? 'Demo PIN is ' + CONFIG.DEMO_PIN : 'Enter the counter PIN'}</p>
     <div class="pin-dots" id="pd">${'<i></i>'.repeat(4)}</div>
     <div class="keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map(k => k === '' ? '<span></span>' : `<button data-k="${k}">${k}</button>`).join('')}</div>
-    <p style="margin-top:24px"><a href="${href('./')}" style="color:var(--ink-2)">Back to the menu</a></p></div></div>`;
+    <p style="margin-top:24px"><a href="${href('order/')}" style="color:var(--ink-2)">Back to ordering</a></p></div></div>`;
   const paint = () => $$('#pd i').forEach((d, i) => d.classList.toggle('on', i < v.length));
   $('#app').onclick = async e => {
     const k = e.target.closest('[data-k]')?.dataset.k; if (k === undefined) return;
@@ -1421,11 +1376,12 @@ function renderBoard() {
     } catch (e) { toast('Menu is offline — showing saved prices.'); }
   }
   route();
-  if (PAGE === 'home') {
-    const q = new URLSearchParams(location.search), add = q.get('add'), m = add && byId(add);
+  if (PAGE === 'order') {
+    const q = new URLSearchParams(location.search), add = q.get('add'), m = add && byId(add), era = q.get('era');
+    if (era && ERA[era] && era !== S.era && !m) { S.era = era; save(); renderHome(); }
+    if (era || add) history.replaceState(null, '', location.pathname + location.hash);
     if (m) {
       if (m.era !== S.era) { S.era = m.era; save(); renderHome(); }
-      history.replaceState(null, '', location.pathname);
       setTimeout(() => { $('#cat-' + m.category)?.scrollIntoView({ behavior: 'auto' }); addToCart(m.id, [], 1, $('#card-' + m.id + ' .thumb')); toast(m.name + ' added to your order'); }, 150);
     }
   }
