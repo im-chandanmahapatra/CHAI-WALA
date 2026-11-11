@@ -1,0 +1,39 @@
+# Local / academic / tooling files not needed in production deployment
+2000's/
+_logo_src/
+artifacts/
+docs/
+extracted_assets/
+output/
+screenshots/
+scripts/
+supabase/
+tests/
+*.docx
+README.md
+
+# V1 app source and build artifacts (only client/public/audio/ is shared with V2)
+client/dist/
+client/node_modules/
+client/src/
+client/public/images/
+client/public/favicon.svg
+client/index.html
+client/package.json
+client/package-lock.json
+client/tsconfig.json
+client/vite.config.ts
+client/test-e2e.ts
+client/verify-ui.mjs
+client/.qa-order-tests.mjs
+client/.env*
+
+# V2 build tooling / Python cache / local node_modules
+v2/node_modules/
+v2/dist/
+v2/tools/
+v2/apps-script/
+v2/.commit-msg.txt
+v2/README.md
+v2/DESIGN.md
+v2/serve.py

@@ -38,3 +38,7 @@ design-archive/
 /screenshots/
 /extracted_assets/
 *.docx
+
+# Python cache
+__pycache__/
+*.pyc
