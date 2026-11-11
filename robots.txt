@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /v2/counter/
+Disallow: /v2/board/
+
+Sitemap: https://im-chandanmahapatra.github.io/CHAI-WALA/v2/sitemap.xml
